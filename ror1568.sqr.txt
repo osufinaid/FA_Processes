@@ -1,0 +1,468 @@
+! ROR1568
+! Census Status Email
+! **********************************************************************
+! Purpose:
+!
+! This program generates a csv file containing the students who will
+!    receive a census status email through FormFusion
+! The population includes all students in the census population (popsel
+!    selection is CENSUS_HT, CENSUS_PT, CENSUS_LTHT) 
+!  EXCEPT:
+!    1. Any undergraduate student in a 500-level course
+!    2. Any COCC student not enrolled in OSU courses
+!    3. Any student repeating a course in the term
+!    4. All students from DPP partners not using OFAX (currently only Umpqua)
+!    5. All pharmacy students
+!    6. All vetmed students
+!
+! **********************************************************************
+! Parameters
+!   p1  Input File Name
+!   p2  Aid Year 
+!   p3  Term Code
+! **********************************************************************
+! Modification History
+! Who  When        What
+! ---  ----------- -----------------------------------------------------
+! SLT  21-Mar-16   Initital report
+! SLT  05-Jul-16   Added excluded student report
+! SLT  04-Oct-16   Added Billing Date as a parameter. Exclude full-time
+!                  status if they sneak in.
+! **********************************************************************
+
+!|==========================================================================
+!| Setup
+!|==========================================================================
+
+BEGIN-SETUP
+   #define prog_name ROR1568
+
+   #define TRUE 1
+   #define FALSE 0
+   #define SUCCESS 0
+
+END-SETUP
+
+
+!|==========================================================================
+!| Main Program
+!|==========================================================================
+
+BEGIN-PROGRAM
+   DO initialization
+   DO main
+   DO cleanup
+END-PROGRAM
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE initialization
+   input $filename     'Please enter the output file name'                    ! P1
+   input $exclude_name 'Please enter the exluded student output file name'    ! P2
+   input $AidYear      'Please enter the Aid Year'                            ! P3
+   input $TermCode     'Please enter the Term Code'                           ! P4
+   input $Billing_Date 'Please enter the Billing Date'                        ! P5
+
+   Let $report_date = datetostr(datenow(),'DD-Mon-YYYY')
+   Let $report_time = datetostr(datenow(),'HH24:MI')
+
+   do format_bill_date
+   do Open_Files
+   
+   let $line = ''
+   do csv_set_string('Student_ID'                      ,$line )
+   do csv_add_string('Student_Lname'                   ,$line )
+   do csv_add_string('Student_Fname'                   ,$line )
+   do csv_add_string('Current_Term'                    ,$line )
+   do csv_add_string('Census_Credit'                   ,$line )
+   do csv_add_string('Census_Status'                   ,$line )
+   do csv_add_string('Census_Date'                     ,$line )
+   do csv_add_string('Week_After_Census_Date'          ,$line )
+   do csv_add_string('Billing_Date'                    ,$line )
+   do csv_add_string('Email'                           ,$line )
+
+   WRITE 10 FROM $line -
+                STATUS=#file-status
+
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* writing data record to ' noline
+      DISPLAY $filename
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+   let $line = ''
+   do csv_set_string('Student_ID'                      ,$line )
+   do csv_add_string('Student_Lname'                   ,$line )
+   do csv_add_string('Student_Fname'                   ,$line )
+   do csv_add_string('Current_Term'                    ,$line )
+   do csv_add_string('Census_Credit'                   ,$line )
+   do csv_add_string('Census_Status'                   ,$line )
+   do csv_add_string('Census_Date'                     ,$line )
+   do csv_add_string('Week_After_Census_Date'          ,$line )
+   do csv_add_string('Billing_Date'                    ,$line )
+   do csv_add_string('Email'                           ,$line )
+   do csv_add_string('Undergrad_500_Level'             ,$line )
+   do csv_add_string('COCC_Not_Enrolled_OSU'           ,$line )
+   do csv_add_string('Repeat_Course'                   ,$line )
+   do csv_add_string('DPP_not_OFAX'                    ,$line )
+   do csv_add_string('Pharmacy_Vetmed'                 ,$line )
+
+   WRITE 11 FROM $line -
+                STATUS=#file-status
+
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* writing data record to ' noline
+      DISPLAY $exclude_name
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  Format Billing Date
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE format_bill_date
+
+   let $Billing_Date_FMT = ''
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('format_bill_date')
+to_char(to_date($Billing_date,'DD-MON-YYYY'),'fmMonth dd, yyyy')   &Billing_Date_FMT
+to_char(next_day(next_day((select stvterm_start_date - 1 from stvterm where stvterm_code = $TermCode and stvterm_trmt_code = '4'),'mon'),'mon'),'fmMonth dd, yyyy')   &Census_Date
+to_char(next_day(next_day((select stvterm_start_date - 1 from stvterm where stvterm_code = $TermCode and stvterm_trmt_code = '4'),'mon'),'mon')+7,'fmMonth dd, yyyy') &Week_After_Census_Date
+
+   let $Billing_Date_FMT = &Billing_Date_FMT
+   
+from dual
+END-SELECT
+END-PROCEDURE
+!------------------------------------------------------------
+!  Open Output file
+!------------------------------------------------------------
+BEGIN-PROCEDURE Open_Files
+ 
+   OPEN $FILENAME AS 10 for-writing RECORD=999999:vary STATUS=#file-status
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* opening ' noline
+      DISPLAY $FILENAME
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+   OPEN $exclude_name AS 11 for-writing RECORD=999999:vary STATUS=#file-status
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* opening ' noline
+      DISPLAY $exclude_name
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+ 
+END-PROCEDURE
+
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE main
+
+LET #row_cnt = 0
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('main')
+spriden_pidm                                                                                            &Student_pidm
+spriden_id                                                                                              &Student_ID 
+spriden_last_name                                                                                       &Student_Fname
+spriden_first_name                                                                                      &Student_Lname
+decode (substr($TermCode, 5, 2), '00', 'summer', '01', 'fall', '02', 'winter', '03', 'spring', null)    &Current_Term
+(select rorenrl_finaid_adj_hr from rorenrl
+where rorenrl_pidm = spriden_pidm
+and rorenrl_term_code = $TermCode)                                                                      &Census_Credit
+(select decode (RORPRST_XES, '1', 'full-time', '2', 'three-quarter time', '3', 'half-time', '4', 'less than half-time', 'not enrolled') from RORPRST
+where RORPRST_PIDM = SPRIDEN_PIDM
+and RORPRST_PERIOD = $TermCode)                                                                         &Census_Status
+ryk_common.f_get_student_email(spriden_pidm)                                                            &Email
+
+   ADD 1 to #row_cnt      
+   LET $Census_Credit = edit(&Census_Credit,'888')
+   LET #Student_pidm = &Student_pidm
+   LET $reason = ''
+   show &Student_pidm '   ' $reason
+   
+!undergraduate in a 500-level course
+   do undergrad_500_level
+
+!COCC student not enrolled in OSU courses
+   do COCC_not_enrolled_OSU
+
+!Any student repeating a course in the term
+   do repeat_course
+
+!All students from DPP partners not using OFAX (Umpqua only - 003222)
+   do DPP_not_OFAX
+
+!All pharmacy and vet med students
+   do pharm_vetmed
+   
+!If for some reason the status changed to full time, exclude them
+   if isblank(&Census_Status) or (&Census_Status = 'full-time')
+      let $reason = 'Y'
+   end-if
+
+   show &Student_pidm '   ' $reason
+
+   if isblank($reason)
+   ! Write to CSV
+      let $line = ''
+      do csv_set_string(&Student_ID                      ,$line )
+      do csv_add_string(&Student_Lname                   ,$line )
+      do csv_add_string(&Student_Fname                   ,$line )
+      do csv_add_string(&Current_Term                    ,$line )
+      do csv_add_string($Census_Credit                   ,$line )
+      do csv_add_string(&Census_Status                   ,$line )
+      do csv_add_string(&Census_Date                     ,$line )
+      do csv_add_string(&Week_After_Census_Date          ,$line )
+      do csv_add_string($Billing_Date_FMT                ,$line )
+      do csv_add_string(&Email                           ,$line )
+      
+      WRITE 10 FROM $line -
+                   STATUS=#file-status
+      
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing data record to ' noline
+         DISPLAY $filename
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+   else 
+   ! Write to exclude student CSV
+      let $line = ''
+      do csv_set_string(&Student_ID                      ,$line )
+      do csv_add_string(&Student_Lname                   ,$line )
+      do csv_add_string(&Student_Fname                   ,$line )
+      do csv_add_string(&Current_Term                    ,$line )
+      do csv_add_string($Census_Credit                   ,$line )
+      do csv_add_string(&Census_Status                   ,$line )
+      do csv_add_string(&Census_Date                     ,$line )
+      do csv_add_string(&Week_After_Census_Date          ,$line )
+      do csv_add_string($Billing_Date_FMT                ,$line )
+      do csv_add_string(&Email                           ,$line )
+      do csv_add_string($u500_level                      ,$line )
+      do csv_add_string($COCC_not_enroll                 ,$line )
+      do csv_add_string($repeat                          ,$line )
+      do csv_add_string($DPP_OFAX                        ,$line )
+      do csv_add_string($pharm_vm                        ,$line )
+      
+      WRITE 11 FROM $line -
+                   STATUS=#file-status
+      
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing data record to ' noline
+         DISPLAY $exclude_name
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+   end-if
+   
+
+from SPRIDEN inner join RORSTAT
+     on spriden_pidm = rorstat_pidm
+where spriden_pidm in (select glbextr_key
+                      from glbextr
+                      where glbextr_application = 'FINAID'
+                      and glbextr_selection like 'CENSUS_%'
+                      and glbextr_selection <> 'CENSUS_FT'
+                      and glbextr_creator_id = 'SAISUSR'
+                      and glbextr_user_id = 'SAISPRD') 
+and spriden_change_ind is null
+and rorstat_aidy_code = $AidYear
+and rorstat_appl_rcvd_date is not null
+order by spriden_last_name, spriden_first_name
+END-SELECT
+
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  undergraduate in a 500-level course
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE undergrad_500_level
+
+let $u500_level = ''
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('undergrad_500_level')
+'Y'                          &u500_level
+
+   let $u500_level = &u500_level
+   let $reason = 'Y'
+
+from sgbstdn a
+inner join sfrstcr on sgbstdn_pidm = sfrstcr_pidm
+inner join ssbsect on sfrstcr_crn = ssbsect_crn and sfrstcr_term_code = ssbsect_term_code
+inner join stvrsts on stvrsts_code = sfrstcr_rsts_code
+where sgbstdn_levl_code = '01'
+and sgbstdn_pidm = #Student_pidm
+and sfrstcr_term_code = $TermCode
+and ssbsect_crse_numb like '5%'
+and stvrsts_incl_sect_enrl = 'Y'
+and sgbstdn_term_code_eff = (select max(b.sgbstdn_term_code_eff)
+                             from sgbstdn b
+                             where b.sgbstdn_pidm = a.sgbstdn_pidm
+                             and b.sgbstdn_term_code_eff <= $TermCode)
+END-SELECT
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  COCC student not enrolled in OSU courses
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE COCC_not_enrolled_OSU
+
+   let $COCC_not_enroll = ''
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('COCC_not_enrolled_OSU')
+'Y'                                               &COCC_not_enroll
+
+   let $COCC_not_enroll = &COCC_not_enroll
+   let $reason = 'Y'
+   
+from ryrofax a
+where a.ryrofax_term_code = $TermCode
+and a.ryrofax_pidm = #Student_pidm
+and a.ryrofax_rpt_inst = '003188'    
+and 0 <  (select sum(b.RYROFAX_CREDIT_HR) 
+          from ryrofax b
+          where b.ryrofax_pidm = a.ryrofax_pidm 
+          and ryrofax_term_code = $TermCode
+          and b.RYROFAX_REG_STATUS = 'R' 
+          and b.RYROFAX_RPT_INST <> '003210')
+and 0 = ( nvl((select sum(sfrstcr_credit_hr) 	 
+            from sfrstcr 	 
+            where sfrstcr_pidm = a.ryrofax_pidm 	 
+            and ((sfrstcr_rsts_code like 'R%') 	 
+            or 
+                (sfrstcr_rsts_code = 'GS')) 
+            and sfrstcr_term_code = $TermCode 
+            ),0))
+END-SELECT
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  Any student repeating a course in the term
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE repeat_course
+
+   let $repeat = ''
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('repeat_course')
+'Y'                            &repeat
+
+   let $repeat = &repeat
+   let $reason = 'Y'
+
+from robusdf
+where robusdf_aidy_code = $AidYear
+and robusdf_pidm = #Student_pidm
+and ((substr($TermCode,5,2) = '00' and nvl(robusdf_value_95,'N') = 'Y') or
+     (substr($TermCode,5,2) = '01' and nvl(robusdf_value_96,'N') = 'Y') or
+     (substr($TermCode,5,2) = '02' and nvl(robusdf_value_97,'N') = 'Y') or
+     (substr($TermCode,5,2) = '03' and nvl(robusdf_value_98,'N') = 'Y'))
+END-SELECT
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  All students from DPP partners not using OFAX (Umpqua only - 003222)
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE DPP_not_OFAX
+
+   let $DPP_OFAX = ''
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('DPP_not_OFAX')
+'Y'                            &DPP_OFAX
+
+   let $DPP_OFAX = &DPP_OFAX
+   let $reason = 'Y'
+   
+from robusdf
+where robusdf_aidy_code = $AidYear
+and robusdf_pidm = #Student_pidm
+and nvl(robusdf_value_2,'999999') = '003222'
+END-SELECT
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  All pharmacy and vet med students
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE pharm_vetmed
+
+   let $pharm_vm = ''
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('pharm_vetmed')
+sgbstdn_styp_code                       &pharm_vm
+
+   let $pharm_vm = &pharm_vm
+   let $reason = 'Y'
+   
+from sgbstdn a
+where sgbstdn_styp_code in ('P','V')
+and sgbstdn_pidm = #Student_pidm
+and sgbstdn_term_code_eff = (select max(b.sgbstdn_term_code_eff)
+                             from sgbstdn b
+                             where b.sgbstdn_pidm = a.sgbstdn_pidm
+                             and b.sgbstdn_term_code_eff <= $TermCode)
+END-SELECT
+END-PROCEDURE
+
+
+!|==========================================================================
+!| End of Report
+!|==========================================================================
+
+BEGIN-PROCEDURE cleanup
+
+   CLOSE 10
+
+   LET #report_status = #sql-status
+   
+   IF (#report_status = {SUCCESS})
+      DO display_count
+   ELSE
+      DISPLAY 'Exiting with error status.'
+      DISPLAY ''
+   END-IF
+
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE display_count
+
+   IF (#row_cnt = 0)
+      DISPLAY 'No rows selected.'
+   ELSE
+      DISPLAY #row_cnt 8888888 noline
+      DISPLAY ' rows selected.'
+      SHOW 'AID YEAR:        ' $AidYear  
+      SHOW 'TERM CODE:       ' $TermCode 
+   END-IF
+
+
+END-PROCEDURE
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE error_handler ($err_routine)
+   DISPLAY ''
+   DISPLAY ''
+   DISPLAY '*ERROR*  Procedure = ' noline
+   DISPLAY $err_routine
+   DISPLAY ''
+   DISPLAY 'SQL Error #: ' noline
+   DISPLAY #sql-status 8888888
+   DISPLAY $sql-error
+   DISPLAY ''
+   LET #_return-status = 4
+   STOP
+END-PROCEDURE
+
+#include 'csv.sqc'                     ! parse line (for csv file)
