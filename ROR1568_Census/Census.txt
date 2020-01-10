@@ -1,0 +1,66 @@
+<!DOCTYPE html><html>
+<span style="font-family: arial;font-size: 10pt">Dear :FNAME  :LNAME,<br>
+OSU ID: :OSU_ID <br>
+<p>
+The Census Date for Financial Aid is the point at which your enrollment is locked for financial aid consideration and coincides with the last date you can add or drop classes for a full tuition refund.
+</p> 
+<p> 
+For the :CENSUS_TERM  census, your credit hours were locked at :CENSUS_CREDITS  credits on :CENSUS_DATE.  Because your enrollment is less than full-time as of the census date, your financial aid may need to be adjusted to reflect your official enrollment level, :CENSUS_STATUS.  Credits added after the Census Date will not be used to increase financial aid eligibility.
+</p>
+<p> 
+You must maintain at least a half-time enrollment level to be eligible for Financial Aid (except for the Pell Grant).  Pell Grant funds will be prorated based on your enrollment level.  Your Cost of Attendance will also be adjusted which may or may not impact your loan funds.
+</p>
+<p> 
+Please review your student billing account online after :WEEK_AFTER_CENSUS  for any adjustments to your :CENSUS_TERM  financial aid. You will be responsible for repaying any aid that was adjusted due to the change in your enrollment.   The next billing statement will be sent on :BILLING_DATE.
+</p>
+<p> 
+<i>Please note: Graduate level credits are not counted for undergraduate financial aid eligibility unless approved for meeting degree requirements by your academic advisor.</i>
+</p>
+
+<strong>Enrollment Levels:</strong>
+<br>
+<table style="font-family: arial;font-size: 10pt;padding: 10px;border-collapse: collapse", border = 1>
+<tbody>
+<tr>
+<td></td>
+<td align="center">Undergraduate/<br>Post Bac</td>
+<td align="center">Graduate</td>
+</tr>
+<tr>
+<td>Full-time</td>
+<td align="center">12+</td>
+<td align="center">9+</td>
+</tr>
+<tr>
+<td>Three-quarter time</td>
+<td align="center">9-11</td>
+<td align="center">n/a</td>
+</tr>
+<tr>
+<td>Half-time</td>
+<td align="center">6-8</td>
+<td align="center">5-8</td>
+</tr>
+<tr>
+<td>Less than half-time</td>
+<td align="center">1-5</td>
+<td align="center">1-4</td>
+</tr>
+</tbody>
+</table><br>
+<p>
+<h3>Office of Financial Aid and Scholarships <br>
+Oregon State University</h3>
+218 Kerr Administration Building<br>
+Corvallis, OR 97331-2120<br>
+t 541.737.2241<br>
+f 541.737.4494<br>
+website: http://financialaid.oregonstate.edu <br>
+facebook: https://www.facebook.com/OSUFinancialAid<br>
+twitter: https://twitter.com/OSUFinancialAid<br>
+</p>
+<br>
+</span>
+<span style="font-family: arial;font-size: 8pt">
+NOTICE: This E-mail (including attachments) is covered by the Electronic Communications Privacy Act, 18 U.S.C._ 2510-2521, is confidential and may be privileged. If you are not the intended recipient, please be aware that any retention, dissemination, distribution, or copying of this communication is prohibited. Please reply to the sender that you have received the message in error, then delete it. Thank you for helping to maintain privacy.</span> 
+</html>
