@@ -1,0 +1,77 @@
+</style>
+    </head>
+    <body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
+    	<center>
+        	<table align="center" border="0" cellpadding="0" cellspacing="0" height="100%" width="100%" id="bodyTable">
+            	<tr>
+                	<td align="center" valign="top" id="bodyCell">
+                    	<!-- BEGIN TEMPLATE // -->
+                    	<table border="0" cellpadding="0" cellspacing="0" id="templateContainer">
+                        	<tr>
+                            	<td align="center" valign="top">
+                                	<!-- BEGIN PREHEADER // -->
+                                    <!-- // END PREHEADER -->
+                                </td>
+                            </tr>
+                        	<tr>
+                            	<td align="center" valign="top">
+                                	<!-- BEGIN HEADER // -->
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateHeader" style="background-image:url(http://sites.oregonstate.edu/email/brand/img/mountain-header.jpg)">
+                                        <tr>
+                                            <td valign="top" class="headerContent">
+												<a href="http://oregonstate.edu/"><img src="http://sites.oregonstate.edu/email/brand/img/osu-logo-white.png" alt="Oregon State University" style="max-width:250px; padding: 20px" id="headerImage" mc:label="header_image" mc:edit="header_image" mc:allowdesigner mc:allowtext /></a>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                    <!-- // END HEADER -->
+                                </td>
+                            </tr>
+                        	<tr>
+                            	<td align="center" valign="top">
+                                	<!-- BEGIN BODY // -->
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody">
+                                        <tr>
+                                            <td valign="top" class="bodyContent" mc:edit="body_content" style="background-color: #000">									
+                                            </td>
+                                        </tr>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td valign="top" class="bodyContent" mc:edit="body_content">
+<br>
+
+Dear :STU_NAME  (:OSU_ID),
+<br>
+<br>
+The Office of Financial Aid is required to obtain confirmation of your summer term attendance plans. Failure to complete the mandatory survey may impact your summer aid eligibility and result in a reversal of aid for the term.
+
+Choose one of these options to complete the survey online within <b>10 days</b> of this notification:<br>
+<br>
+ 1. Complete the online survey using the following link.  Log in using your ONID username and password:<br>
+<br>
+<a href="https://xe.ucsadm.oregonstate.edu:9990/ords/prod/twbkwbis.P_WWWLogin?ret_code=S">https://xe.ucsadm.oregonstate.edu:9990/ords/prod/twbkwbis.P_WWWLogin?ret_code=S</a><br>
+<br>
+ 2. You can also find the survey from MyOSU:<br>
+<br>
+         - From the Welcome tab, select Banner Self-Service<br>
+         - Click on Personal Information<br>
+         - Click on Answer a Survey<br>
+<br>
+Please select the Summer Enrollment Confirmation survey and <b>complete all questions</b>. In order for the survey to be valid you must specify each session you plan to complete. <br>
+<br>
+Why is this survey required?<br>
+<br>
+The survey is required if you have dropped courses, withdrawn, received a negative grade, or have a missing grade from a current session. Per federal regulations, we must obtain survey or email confirmation of your intent to participate in future sessions. We are <u>not</u> able to assume intent to participate based solely on enrollment in a future session. If this survey confirmation is not received within the 10 day timeframe we must treat you as withdrawn and  reevaluate aid eligibility based on the withdraw dates or participation reports that are recorded for earlier sessions.
+<br>
+<br>
+Please contact our office with questions at 541-737-2241 or <a href="FinancialAidOffice-R2T4@oregonstate.edu">FinancialAidOffice-R2T4@oregonstate.edu</a>
+<br>
+<br>
+Oregon State University<br>
+Office of Financial Aid <br>
+218 Kerr Administration Building<br>
+Corvallis OR  97331-2120<br>
+T-541-737-2241<br>
+F-541-737-4494<br>
+<br>
+FERPA is the Family Education Rights and Privacy Act, the law that limits the release of student information. Students, you have the right to your financial aid records (the status of your file, your financial aid award, information on the FAFSA, etc.) and to decide who else may have access to your financial aid information. Thus requests for or disclosure of financial aid information cannot be released to parent(s), other individuals or agencies without your written consent.

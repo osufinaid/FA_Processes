@@ -1,0 +1,381 @@
+! ROR2020
+! R2T4 Survey Email
+!***********************************************************************
+! Purpose:
+!
+! This program pulls students with R2T4S requirement to determine whether
+!  to send an email to the student to ask them to fill out an R2T4 Summer 
+!  Survey for the sessions they plan to attend.  The email is sent through 
+!  FormFusion.
+!
+!***********************************************************************
+! Parameters
+!   p1  aid year
+!
+!***********************************************************************
+! Modification History
+! Who  When      What
+! ---  --------- -------------------------------------------------------
+! SLT  05-JUN-12 New SQR.
+! SLT  21-MAY-14 DBEU Changes
+!***********************************************************************
+ 
+ 
+!|==========================================================================
+!| Setup
+!|==========================================================================
+ 
+BEGIN-SETUP
+   #include 'osu_includes.sqc'
+   #define prog_name ROR2020
+ 
+   #define TRUE 1
+   #define FALSE 0
+   #define SUCCESS 0
+ 
+END-SETUP
+
+ 
+!|==========================================================================
+!| Main Program
+!|==========================================================================
+ 
+BEGIN-PROGRAM
+
+   DO initialization
+   DO main
+   Do close_files
+   
+END-PROGRAM
+ 
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE initialization
+
+   input $filename    'Enter File Name '           ! P1
+   input $aidy        'Enter Aid Year '            ! P2
+   
+   Let $report_date = datetostr(datenow(),'DD-Mon-YYYY')
+   Let $report_time = datetostr(datenow(),'HH24:MI')
+   Let $survey_date = datetostr(datenow(),'DD-MON-YYYY')
+
+   Let $sepchar = ','  ! Separator character (delimiter)
+   LET $embedchar = '"'
+   
+   Let $application = 'FINAID'
+   Let $selection = 'FA_R2T4_U_'||$aidy
+   Let $creator_id = 'SAISUSR'
+   Let $user_id = 'SAISPRD'
+    
+   LET #record_count = 0
+   LET #records_found = 0
+   
+   OPEN $filename AS 55 for-writing RECORD=999999:vary STATUS=#file-status
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* opening ' noline
+      DISPLAY $filename
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+!!   WRITE 55 FROM -
+!!   $embedchar  'Aid Year'        $embedchar   $sepchar -
+!!   $embedchar  'ID'              $embedchar   $sepchar -
+!!   $embedchar  'Name'            $embedchar   $sepchar -
+!!   $embedchar  'Email'           $embedchar    
+!!
+!!      STATUS=#file-status
+!!      IF (#file-status != {SUCCESS})
+!!         DISPLAY '*ERROR* writing data record to ' noline
+!!         DISPLAY $filename
+!!         DISPLAY 'Error status = ' noline
+!!         DISPLAY #file-status 8888888
+!!      END-IF
+      
+   DO delete_popsel
+
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE delete_popsel
+
+BEGIN-SQL ON-ERROR=error_handler ('delete_popsel')
+DELETE FROM GENERAL.GLBEXTR
+WHERE GLBEXTR_APPLICATION  = $application
+   AND GLBEXTR_SELECTION   = $selection
+   AND GLBEXTR_CREATOR_ID  = $creator_id
+   AND GLBEXTR_USER_ID     = $user_id
+END-SQL
+END-PROCEDURE
+
+!------------------------------------------------------------
+ 
+BEGIN-PROCEDURE main
+BEGIN-SELECT ON-ERROR=error_handler ('main')
+spriden_pidm                                               &pidm
+spriden_id                                                 &sid
+substr(spriden_first_name||' '||spriden_last_name,1,60)    &full_name
+
+  let #pidm = &pidm
+
+  DO get_email
+  DO insert_survey_popsel
+  
+  LET #record_count = #record_count + 1
+  
+  DO get_gurmail
+  SHOW #gurmail_found
+  if not #gurmail_found
+     LET #records_found = #records_found + 1
+     DO get_survey
+     DO write_file
+     DO insert_gurmail
+     DO update_robusdf
+  end-if
+  
+FROM RRRAREQ, SPRIDEN
+WHERE RRRAREQ_PIDM = SPRIDEN_PIDM
+AND SPRIDEN_CHANGE_IND IS NULL
+AND RRRAREQ_AIDY_CODE = $aidy
+AND RRRAREQ_TREQ_CODE = 'R2T4S'
+AND RRRAREQ_TRST_CODE = 'E'
+ORDER BY SPRIDEN_LAST_NAME, SPRIDEN_FIRST_NAME
+END-SELECT
+
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE get_email
+
+   LET $email = ' '
+
+BEGIN-SELECT LOOPS=1 
+goremal_email_address  &goremal_email
+
+   LET $email = &goremal_email
+
+FROM goremal, gtvsdax
+WHERE goremal_pidm = #pidm
+AND goremal_status_ind = 'A'
+and gtvsdax_internal_code_group = 'OSU_EMAIL'
+and gtvsdax_internal_code = upper('STUDENT')
+and GTVSDAX_EXTERNAL_CODE = goremal_emal_code
+ORDER BY decode(goremal_preferred_ind,'Y','0','1'),
+         gtvsdax.gtvsdax_internal_code_seqno,
+         to_char(goremal_activity_date, 'YYYYMMDD') desc 
+END-SELECT
+END-PROCEDURE 
+
+!------------------------------------------------------------
+ 
+BEGIN-PROCEDURE get_gurmail
+
+   LET #gurmail_found = 0
+
+BEGIN-SELECT ON-ERROR=error_handler ('get_gurmail')
+1                                                            &gurmail_found
+(trunc(sysdate) - trunc(nvl(gurmail_date_printed,sysdate)))  &gurmail_print_days
+
+   SHOW 'PRINT DAYS: ' &gurmail_print_days
+   
+   LET #gurmail_found = &gurmail_found
+   IF &gurmail_print_days > 10
+       LET #gurmail_found = 0
+   END-IF
+
+FROM gurmail
+WHERE gurmail_pidm = #pidm
+AND gurmail_system_ind = 'R'
+AND gurmail_letr_code = 'R2T4S'
+AND gurmail_date_printed = (select max(gurmail_date_printed)
+                              from gurmail
+                             where gurmail_pidm = #pidm
+                               and gurmail_letr_code = 'R2T4S')
+END-SELECT
+END-PROCEDURE
+!------------------------------------------------------------
+BEGIN-PROCEDURE write_file
+
+      WRITE 55 FROM -
+      $embedchar  $aidy          $embedchar   $sepchar -
+      $embedchar  &sid           $embedchar   $sepchar -
+      $embedchar  &full_name     $embedchar   $sepchar -
+      $embedchar  $email         $embedchar
+ 
+
+         STATUS=#file-status
+         IF (#file-status != {SUCCESS})
+            DISPLAY '*ERROR* writing data record to ' noline
+            DISPLAY $filename
+            DISPLAY 'Error status = ' noline
+            DISPLAY #file-status 8888888
+         END-IF
+
+END-PROCEDURE
+
+!------------------------------------------------------------
+ 
+BEGIN-PROCEDURE get_survey
+
+BEGIN-SELECT ON-ERROR=error_handler ('get_survey')
+GOBSRVR_DECLINED_IND                                       &DECLINED_IND
+GOBSRVR_COMPLETE_IND                                       &COMPLETE_IND
+
+   if (&DECLINED_IND = 'Y') OR (&COMPLETE_IND = 'Y')
+   
+      DO update_survey
+      
+   end-if
+
+FROM GOBSRVR
+WHERE GOBSRVR_NAME = $selection
+AND GOBSRVR_PIDM = #pidm
+
+END-SELECT
+END-PROCEDURE
+
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE update_survey
+
+BEGIN-SQL ON-ERROR=error_handler ('update_survey')
+UPDATE GOBSRVR
+SET GOBSRVR_DECLINED_IND = 'N',
+    GOBSRVR_COMPLETE_IND = 'N'
+WHERE GOBSRVR_PIDM = &PIDM
+AND GOBSRVR_NAME = $selection
+END-SQL
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE insert_survey_popsel
+
+BEGIN-SQL ON-ERROR=error_handler ('insert_survey_popsel')
+INSERT INTO GLBEXTR
+(
+GLBEXTR_APPLICATION,
+GLBEXTR_SELECTION,
+GLBEXTR_CREATOR_ID,
+GLBEXTR_USER_ID,
+GLBEXTR_KEY,
+GLBEXTR_ACTIVITY_DATE,
+GLBEXTR_SYS_IND,
+GLBEXTR_SLCT_IND
+)
+SELECT DISTINCT 
+$application,
+$selection,
+$creator_id,
+$user_id,
+#pidm, 
+SYSDATE,
+'M',
+NULL
+FROM DUAL
+END-SQL
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE insert_gurmail
+ 
+BEGIN-SQL ON-ERROR=error_handler ('insert_gurmail')
+INSERT INTO GURMAIL
+(GURMAIL_PIDM,
+GURMAIL_SYSTEM_IND,
+GURMAIL_MODULE_CODE,
+GURMAIL_LETR_CODE,
+GURMAIL_DATE_INIT,
+GURMAIL_DATE_PRINTED,
+GURMAIL_USER,
+GURMAIL_AIDY_CODE,
+GURMAIL_ORIG_IND,
+GURMAIL_PUB_GEN,
+GURMAIL_ACTIVITY_DATE)
+SELECT #pidm,
+       'R',
+       'R',
+       'R2T4S',
+       SYSDATE,
+       SYSDATE,
+       'ROR2020',
+       $aidy,
+       'S',
+       'G',
+       SYSDATE
+       FROM SYS.DUAL
+END-SQL
+ 
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+BEGIN-PROCEDURE update_robusdf
+
+begin-sql ON-ERROR=error_handler ('update_robusdf')
+DECLARE
+lv_msgtab                               gb_common.msgtab;;
+BEGIN
+BWYKR_ROBUSDF.p_create_robusdf(
+       aidy          => $aidy,
+       pidm          => &PIDM,
+       p_value_82    => $survey_date,
+       p_rowid_out   => $robusdf_rowid,
+       return_value  => #return_value);;
+EXCEPTION
+   WHEN others THEN
+    IF SQLCODE = gb_common_strings.err_code THEN
+        lv_msgtab  := gb_common.f_err_msg_remove_delim_tbl(SQLERRM);;
+        $error_msg := lv_msgtab(1);;
+    END IF;;
+END;;
+END-SQL
+
+    SHOW $error_msg
+    
+END-PROCEDURE
+!------------------------------------------------------------
+BEGIN-PROCEDURE close_files
+
+   SHOW 'Number of students: ' #record_count
+   SHOW 'Email Students:     ' #records_found
+   
+   CLOSE 55
+
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* closing ' noline
+      DISPLAY $filename
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+      LET #return-status = 4
+      STOP
+   END-IF
+
+
+END-PROCEDURE
+ 
+!---------------------------------------------------------------------------
+
+!|==========================================================================
+!| End of Report
+!|==========================================================================
+ 
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE Error_Handler ($err_routine)
+   IF #_sql-status <> 1    ! Unique constraint
+      DISPLAY ''
+      DISPLAY ''
+      DISPLAY '*ERROR*  Procedure = ' noline
+      DISPLAY $err_routine
+      DISPLAY ''
+      DISPLAY 'SQL Error #: ' noline
+      DISPLAY #_sql-status 8888888
+      DISPLAY $_sql-error
+      DISPLAY ''
+      LET #_return-status = 4
+   END-IF
+END-PROCEDURE
