@@ -1,0 +1,800 @@
+! ROR2090.SQR
+!  Financial Aid PopSel FormFusion Email Process
+! **********************************************************************
+!  This program emails a population of students using FormFusion
+! **********************************************************************
+! Parameters
+!   p0   Output email file name      
+!   p1   Output address file name      
+!   p2   Use Popsel instead of Gurmail 
+!   p3   Aid Year                      
+!   p4   PopSel Application Code       
+!   p5   PopSel Selection Code         
+!   p6   PopSel Creator ID             
+!   p7   PopSel User ID                
+!   p8   GURMAIL letter code           
+!   p9   Email Address Hierarchy       
+!   p10  Mail Address Hierarchy        
+!   p11  Audit or Update               
+!
+! **********************************************************************
+! Modification History
+! Who When        What
+! --- ----------- ------------------------------------------------------
+! SLT 01-Mar-2013 Initial Development
+! SLT 05-Apr-2013 Corrected counts for inserting gurmail records
+!************************************************************* 
+!  Setup                                   
+!************************************************************* 
+Begin-Setup
+   #include 'osu_includes.sqc'
+   #Define Prog_Name ROR2090
+
+   #Define True 1
+   #Define False 0
+   #Define Success 0
+   #Define Yes   'Y'
+   #Define No    'N'
+   #Define Null  '' 
+   #Define Blank ' '
+   #Define Email_Max  200   
+   #Define Test_Email_Address 'tanguays@onid.orst.edu'   
+   
+End-Setup
+
+!*************************************************************
+! Generic Functions
+!*************************************************************
+
+BEGIN-PROCEDURE f$element (#num, $sep, $str, :$result)
+IF (#num < 0)
+   DISPLAY '*ERROR* First parameter to SQR "f$element" must be >= 0.'
+   STOP
+END-IF
+   
+LET #count = 0
+LET $str = $str || $sep
+WHILE (#count < #num)
+   LET #pos = instr($str, $sep, 0) + length($sep)   
+   LET $str = substr($str, #pos, 999)
+   LET #count = #count + 1
+END-WHILE
+IF (isnull($str))
+   LET $result = $sep
+ELSE
+   LET #pos = instr($str, $sep, 0) - 1
+   LET $result = substr($str, 0, #pos)
+END-IF
+END-PROCEDURE
+
+!************************************************************* 
+! Main Program                                  
+!*************************************************************  
+
+Begin-Program
+
+   Do Initialization
+         
+   if $use_popsel = 'Y' and
+      (isblank($application) or isblank($selection) or isblank($creator_id) or isblank($user_id))
+
+      WRITE 55 FROM -
+         'ALL POPULATION SELECTION PARAMETERS MUST BE ENTERED - RUN TERMINATED '       
+      
+         STATUS=#file-status
+         IF (#file-status != {SUCCESS})
+            DISPLAY '*ERROR* writing data record to ' noline
+            DISPLAY $filename
+            DISPLAY 'Error status = ' noline
+            DISPLAY #file-status 8888888
+         END-IF
+         
+   else
+
+      if $use_popsel = 'Y'
+         Do Main_Popsel
+      else
+         Do Main_Gurmail
+      end-if
+   
+   end-if
+
+   Do Cleanup
+
+End-Program
+
+!************************************************************* 
+! Initialization procedure                                    
+!************************************************************* 
+
+Begin-Procedure Initialization     
+
+   #DEBUGD Show 'Running in DEBUGD Mode'
+   
+   Let #Note_Count = 0
+
+   Input $filename            'Output email file name '         ! P0 
+   Input $addressfile         'Output address file name '       ! P1 
+   Input $use_popsel          'Use Popsel instead of Gurmail? ' ! P2 
+   Input $aidy                'Aid Year '                       ! P3
+   Input $application         'PopSel Application Code '        ! P4
+   Input $selection           'PopSel Selection Code   '        ! P5
+   Input $creator_id          'PopSel Creator ID       '        ! P6
+   Input $user_id             'PopSel User ID          '        ! P7
+   Input $gurmail_letr        'GURMAIL letter code '            ! P8
+   Input $email_atyps         'Email Address Hierarchy '        ! P9
+   Input $mail_atyps          'Mail Address Hierarchy '         ! P10
+   Input $update_gurmail      'Audit or Update '                ! P11
+
+   LET $sep = '|'
+   Let $sepchar = ','  ! Separator character (delimiter)
+   LET $embedchar = '"'
+   LET $first_record = 'Y'
+
+   LET $email_atyps = UPPER($email_atyps)
+   LET $mail_atyps = UPPER($mail_atyps)
+   LET $gurmail_letr = UPPER($gurmail_letr)  
+   LET $update_gurmail = UPPER($update_gurmail)
+   LET $application = UPPER($application)
+   LET $selection = UPPER($selection)
+   LET $creator_id = UPPER($creator_id)
+   LET $user_id = UPPER($user_id)
+
+      
+   DO GET_DATABASE_NAME ($db)
+   Show 'running In DB ' $db 
+   
+   OPEN $filename AS 55 for-writing RECORD=999999:vary STATUS=#file-status
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* opening ' noline
+      DISPLAY $filename
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+   WRITE 55 FROM -
+   $embedchar  'Aid Year'        $embedchar   $sepchar -
+   $embedchar  'ID'              $embedchar   $sepchar -
+   $embedchar  'First Name'      $embedchar   $sepchar -
+   $embedchar  'Last Name'       $embedchar   $sepchar -
+   $embedchar  'Email'           $embedchar          
+
+      STATUS=#file-status
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing data record to ' noline
+         DISPLAY $filename
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+      
+   OPEN $addressfile AS 56 for-writing RECORD=999999:vary STATUS=#file-status
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* opening ' noline
+      DISPLAY $addressfile
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+End-Procedure
+
+!************************************************************* 
+! Get the pidms from the population selection                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE Main_Popsel
+
+   LET #record_count = 0
+   LET #gurmail_count = 0
+   LET #email_sent = 0
+   
+BEGIN-SELECT ON-ERROR=error_handler ('Main')
+glbextr_key    &popsel_pidm
+
+   LET #pidm = &popsel_pidm
+   DO process_record
+
+from glbextr
+where glbextr_application = $application
+and glbextr_selection = $selection
+and glbextr_creator_id = $creator_id
+and glbextr_user_id = $user_id
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Get the pidms from the Gurmail table                                  
+!************************************************************* 
+
+BEGIN-PROCEDURE Main_Gurmail
+
+   LET #record_count = 0
+   LET #gurmail_count = 0
+   LET #email_sent = 0
+   
+BEGIN-SELECT ON-ERROR=error_handler ('Main')
+gurmail_pidm    &gurmail_pidm
+
+   LET #pidm = &gurmail_pidm
+   DO process_record
+
+from gurmail
+where gurmail_letr_code = $gurmail_letr
+and gurmail_date_printed is null
+and gurmail_aidy_code = $aidy
+and trunc(sysdate) >= trunc(gurmail_date_init + nvl(gurmail_wait_days,0))
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Process the pidm                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE process_record
+LET #record_count = #record_count + 1
+DISPLAY ''
+DISPLAY 'Processing record #' noline
+DISPLAY #record_count 9999
+
+LET $found_spriden = 'N'
+IF (#pidm = 0)
+   DISPLAY '*ERROR* Pidm is zero; could not process record.'
+ELSE
+   #DEBUGD DISPLAY 'PIDM=' noline
+   #DEBUGD DISPLAY #pidm 99999999
+   DO get_spriden
+END-IF
+
+IF ($found_spriden = 'Y')
+   IF not ISBLANK($email_atyps)
+      LET #hold_pos = 0
+      DO get_email
+   END-IF
+   IF ($update_gurmail = 'U')
+      if $use_popsel = 'Y'
+         DO insert_gurmail
+      else
+         DO update_gurmail
+      end-if
+   END-IF   
+END-IF
+END-PROCEDURE
+
+!************************************************************* 
+! Get Mail Preference                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE get_finaid_mailpref
+LET $mailpref = ''
+BEGIN-SELECT LOOPS=1
+robusdf_value_9            &mailpref
+
+   LET $mailpref = &mailpref
+   #DEBUGD DISPLAY 'Got Finaid Mailpref: ' noline
+   #DEBUGD DISPLAY $mailpref
+
+FROM robusdf, 
+     robinst
+WHERE robusdf_pidm = #pidm
+  AND robusdf_aidy_code = robinst_aidy_code
+ORDER BY robinst_aidy_start_date DESC
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Get Name                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE get_spriden
+
+   #DEBUGD DISPLAY 'Getting SPRIDEN data...'
+
+BEGIN-SELECT DISTINCT  ON-ERROR=error_handler ('get_spriden')
+spriden_id                 &id
+spriden_last_name          &lastname
+spriden_first_name         &firstname
+spriden_mi                 &middlename
+substr(spriden_id,1,3)
+|| '-'
+|| substr(spriden_id,4,2)
+|| '-'
+|| substr(spriden_id,6,4)  &editted_id
+spriden_last_name
+|| ' '
+|| spriden_first_name
+|| ' '
+|| spriden_mi              &name_lastfirst
+spriden_first_name
+|| decode(spriden_mi,
+   '', ' ',
+   ' '||spriden_mi||' ')
+|| spriden_last_name       &name_firstlast
+
+   LET $found_spriden='Y'
+   
+   LET $email_name = &name_firstlast
+
+   #DEBUGD DISPLAY 'Got SPRIDEN data for: ' noline
+   #DEBUGD DISPLAY &id noline
+   #DEBUGD DISPLAY ' ' noline
+   #DEBUGD DISPLAY &firstname noline
+   #DEBUGD DISPLAY ' ' noline
+   #DEBUGD DISPLAY &lastname
+
+
+ FROM spriden
+WHERE spriden_pidm = #pidm
+  AND spriden_change_ind IS NULL
+  
+END-SELECT
+
+END-PROCEDURE
+
+!************************************************************* 
+! Get Email Address                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE get_email
+
+   #DEBUGD DISPLAY 'Getting Email...'
+
+LET $email = ''
+LET #pos = #hold_pos
+WHILE 1
+   DO f$element (#pos, $sep, $email_atyps, $emal)
+   IF ($emal = $sep)
+      BREAK
+   END-IF
+   DO get_email_by_type
+   IF (not isblank($email))
+      LET #hold_pos = #pos + 1
+      BREAK
+   END-IF
+   LET #pos = #pos + 1
+END-WHILE
+
+   ! when running in Development environment send to developer email  
+   if $db <> 'PROD'
+      Show 'Changing email to test email address ' {Test_Email_Address}
+      Show 'Prior address was ' $email 
+      Let $email = {Test_Email_Address}
+   end-if 
+
+IF isblank($email)
+   DISPLAY '*WARNING* Cannot find Email address for ' noline
+   DISPLAY &id
+   do get_address
+ELSE
+   LET #email_sent = #email_sent + 1
+   WRITE 55 FROM -
+   $embedchar  $aidy            $embedchar   $sepchar -
+   $embedchar  &id              $embedchar   $sepchar -
+   $embedchar  &firstname       $embedchar   $sepchar -
+   $embedchar  &lastname        $embedchar   $sepchar -
+   $embedchar  $email           $embedchar          
+
+      STATUS=#file-status
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing data record to ' noline
+         DISPLAY $filename
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+END-IF
+
+END-PROCEDURE
+
+!************************************************************* 
+! Get Email by Type                                   
+!************************************************************* 
+
+BEGIN-PROCEDURE get_email_by_type
+
+   #DEBUGD DISPLAY 'Attempting to get ' noline
+   #DEBUGD DISPLAY $emal noline
+   #DEBUGD DISPLAY ' Email.'
+
+IF (nvl($mailpref,'E') = 'E')
+   IF ($emal = 'FAO')
+      DO get_fao_email
+   ELSE
+      IF ($emal = 'FPAR')
+         DO get_fpar_email
+      ELSE
+         IF $emal = 'ONID'
+            DO check_if_matric
+            if $matric = 'Y'
+               DO get_other_email
+            end-if
+         else
+            DO get_other_email
+         end-if
+      END-IF
+   END-IF
+END-IF
+
+END-PROCEDURE
+
+!************************************************************* 
+! Get Parent Email                                    
+!************************************************************* 
+
+BEGIN-PROCEDURE get_fpar_email
+BEGIN-SELECT LOOPS=1 
+RCRAPP4_P_EMAIL_ADDRESS  &rcrapp4_p_email
+
+   LET $email = &rcrapp4_p_email
+   #DEBUGD DISPLAY 'Got PARENT Email: ' noline
+   #DEBUGD DISPLAY $email
+
+FROM rcrapp4,
+     rcrapp1
+WHERE rcrapp1_pidm = #pidm
+  AND rcrapp1_infc_code='EDE'
+  AND rcrapp1_curr_rec_ind='Y'
+  AND rcrapp1_aidy_code < '5000'
+  AND rcrapp4_aidy_code = rcrapp1_aidy_code
+  AND rcrapp4_pidm = rcrapp1_pidm
+  AND rcrapp4_infc_code = rcrapp1_infc_code
+  AND rcrapp4_seq_no = rcrapp1_seq_no
+  AND rcrapp4_p_email_address is not null
+ORDER BY rcrapp1_aidy_code DESC
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Get FAO Email                                    
+!************************************************************* 
+
+BEGIN-PROCEDURE get_fao_email
+BEGIN-SELECT LOOPS=1 
+RCRAPP4_EMAIL_ADDRESS  &rcrapp4_email
+
+   LET $email = &rcrapp4_email
+   #DEBUGD DISPLAY 'Got FAO Email: ' noline
+   #DEBUGD DISPLAY $email
+
+FROM rcrapp4,
+     rcrapp1
+WHERE rcrapp1_pidm = #pidm
+  AND rcrapp1_infc_code='EDE'
+  AND rcrapp1_curr_rec_ind='Y'
+  AND rcrapp1_aidy_code < '5000'
+  AND rcrapp4_aidy_code = rcrapp1_aidy_code
+  AND rcrapp4_pidm = rcrapp1_pidm
+  AND rcrapp4_infc_code = rcrapp1_infc_code
+  AND rcrapp4_seq_no = rcrapp1_seq_no
+  AND rcrapp4_email_address is not null
+ORDER BY rcrapp1_aidy_code DESC
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Check if Matriculated Student and use STU address if not                                    
+!************************************************************* 
+
+BEGIN-PROCEDURE check_if_matric
+
+   LET $matric = 'N'
+   
+BEGIN-SELECT  ON-ERROR=error_handler ('check_if_matric')
+'Y'         &matric
+
+   LET $matric = &matric
+
+from sfbetrm
+where sfbetrm_pidm = #pidm
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Get Other Email                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE get_other_email
+BEGIN-SELECT LOOPS=1 
+goremal_email_address  &goremal_email
+
+   LET $email = &goremal_email
+
+   #DEBUGD DISPLAY 'Got ' noline
+   #DEBUGD DISPLAY $emal noline
+   #DEBUGD DISPLAY ' Email: ' noline
+   #DEBUGD DISPLAY $email
+
+FROM goremal
+WHERE goremal_pidm = #pidm
+AND   goremal_emal_code = $emal
+AND   goremal_status_ind = 'A'
+ORDER BY decode(goremal_preferred_ind,'Y','0','1'), 
+         to_char(goremal_activity_date, 'YYYYMMDD') desc
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Get address for students with no email address                                    
+!************************************************************* 
+
+BEGIN-PROCEDURE get_address
+
+   #DEBUGD DISPLAY 'Getting address...'
+
+LET #pos = 0
+WHILE 1
+   DO f$element (#pos, $sep, $mail_atyps, $atyp)
+   IF ($atyp = $sep)
+      BREAK
+   END-IF
+   DO get_addr_by_type
+   IF (not isblank(&street1))
+      BREAK
+   END-IF
+   LET #pos = #pos + 1
+END-WHILE
+IF isblank(&street1)
+   DISPLAY '*WARNING* Cannot find address for ' noline
+   DISPLAY &id
+   do write_records
+END-IF
+END-PROCEDURE
+
+!************************************************************* 
+! Get address for students with no email address                                    
+!************************************************************* 
+
+BEGIN-PROCEDURE get_addr_by_type
+BEGIN-SELECT DISTINCT  ON-ERROR=error_handler ('get_addr_by_type')
+spraddr_street_line1    &street1
+spraddr_street_line2    &street2
+spraddr_street_line3    &street3
+spraddr_city            &city
+spraddr_stat_code       &state
+spraddr_zip             &zip
+spraddr_natn_code       &nation
+
+   #DEBUGD DISPLAY 'Got address type ' noline
+   #DEBUGD DISPLAY $atyp noline
+   #DEBUGD DISPLAY ': ' noline
+   #DEBUGD DISPLAY &street1
+   do write_records
+
+ FROM spraddr
+WHERE spraddr_pidm = #pidm
+  AND spraddr_atyp_code = $atyp
+  AND spraddr_status_ind IS NULL
+  AND trunc(sysdate) between
+         nvl(trunc(spraddr_from_date), to_date('01-JAN-1900','DD-MON-YYYY'))
+     and nvl(trunc(spraddr_to_date),   to_date('01-JAN-2500','DD-MON-YYYY'))
+END-SELECT
+END-PROCEDURE
+
+!************************************************************* 
+! Call routine to update gurmail record                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE update_gurmail
+
+   #DEBUGD DISPLAY 'Update GURMAIL record...'
+   LET #insert_count = 0
+   LET #insert_status = 0
+   LET $insert_error = ''
+
+BEGIN-SQL  ON-ERROR=error_handler ('update_gurmail')
+UPDATE GURMAIL 
+SET GURMAIL_DATE_PRINTED = SYSDATE
+WHERE GURMAIL_LETR_CODE = $gurmail_letr 
+AND GURMAIL_AIDY_CODE = $aidy
+AND GURMAIL_PIDM = #pidm
+AND GURMAIL_DATE_PRINTED IS NULL
+AND TRUNC(SYSDATE) >= TRUNC(GURMAIL_DATE_INIT + NVL(GURMAIL_WAIT_DAYS,0))
+END-SQL
+
+   LET #insert_count = #sql-count
+   LET #insert_status = #sql-status
+   LET $insert_error = $sql_error
+   
+   LET #gurmail_count = #gurmail_count + #insert_count
+   
+   IF (#insert_count = 0)
+      DISPLAY '*ERROR* No rows inserted!!'
+      DISPLAY 'Insert status: ' noline
+      DISPLAY #insert_status 99
+      DISPLAY 'Insert error: ' noline
+      DISPLAY $insert_error
+   END-IF
+
+END-PROCEDURE
+
+!************************************************************* 
+! Call routine to insert gurmail record                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE INSERT_GURMAIL
+
+   #DEBUGD DISPLAY 'insert GURMAIL record...'
+   LET #insert_count = 0
+   LET #insert_status = 0
+   LET $insert_error = ''
+ 
+begin-sql ON-ERROR=error_handler ('INSERT_GURMAIL')
+INSERT INTO GENERAL.GURMAIL
+(GURMAIL_PIDM,
+GURMAIL_SYSTEM_IND,
+GURMAIL_MODULE_CODE,
+GURMAIL_LETR_CODE,
+GURMAIL_DATE_INIT,
+GURMAIL_DATE_PRINTED,
+GURMAIL_USER,
+GURMAIL_AIDY_CODE,
+GURMAIL_ORIG_IND,
+GURMAIL_PUB_GEN,
+GURMAIL_ACTIVITY_DATE)
+VALUES
+(#pidm,
+'R',
+'R',
+$gurmail_letr,
+SYSDATE,
+SYSDATE,
+USER, 
+$aidy,
+'S',
+'G',
+ SYSDATE)
+end-sql
+
+   LET #insert_count = #sql-count
+   LET #insert_status = #sql-status
+   LET $insert_error = $sql_error
+   
+   LET #gurmail_count = #gurmail_count + #insert_count
+   
+   IF (#insert_count = 0)
+      DISPLAY '*ERROR* No rows inserted!!'
+      DISPLAY 'Insert status: ' noline
+      DISPLAY #insert_status 99
+      DISPLAY 'Insert error: ' noline
+      DISPLAY $insert_error
+   END-IF
+
+END-PROCEDURE
+!************************************************************* 
+! Write the addresses for the students with no email                                     
+!************************************************************* 
+
+BEGIN-PROCEDURE write_records
+LET #write_count = #write_count + 1
+
+   #DEBUGD DISPLAY 'Writing record #' noline
+   #DEBUGD DISPLAY #write_count 9999
+
+   IF ($first_record = 'Y')
+      LET $first_record = 'N'
+      write 56 from $embedchar 'ID'         $embedchar $sepchar -
+                    $embedchar 'Lastname'   $embedchar $sepchar -
+                    $embedchar 'Firstname'  $embedchar $sepchar -
+                    $embedchar 'Midname'    $embedchar $sepchar -
+                    $embedchar 'Street1'    $embedchar $sepchar -
+                    $embedchar 'Street2'    $embedchar $sepchar -
+                    $embedchar 'Street3'    $embedchar $sepchar -
+                    $embedchar 'City'       $embedchar $sepchar -
+                    $embedchar 'State'      $embedchar $sepchar -
+                    $embedchar 'Zip'        $embedchar $sepchar -
+                    $embedchar 'Nation'     $embedchar $sepchar -
+                    $embedchar 'Email'      $embedchar 
+                    STATUS=#file-status
+
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing header record to ' noline
+         DISPLAY $mailfile
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+   END-IF
+
+   write 56 from $embedchar &id         $embedchar $sepchar -
+                 $embedchar &lastname   $embedchar $sepchar -
+                 $embedchar &firstname  $embedchar $sepchar -
+                 $embedchar &middlename $embedchar $sepchar -
+                 $embedchar &street1    $embedchar $sepchar -
+                 $embedchar &street2    $embedchar $sepchar -
+                 $embedchar &street3    $embedchar $sepchar -
+                 $embedchar &city       $embedchar $sepchar -
+                 $embedchar &state      $embedchar $sepchar -
+                 $embedchar &zip        $embedchar $sepchar -
+                 $embedchar &nation     $embedchar $sepchar -
+                 $embedchar $email      $embedchar 
+                 STATUS=#file-status
+
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* writing data record to ' noline
+      DISPLAY $mailfile
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+END-PROCEDURE
+ 
+!************************************************************* 
+! Close output file                                     
+!*************************************************************
+
+BEGIN-PROCEDURE close_file
+
+   IF not isblank($filename)
+      CLOSE 55
+   END-IF
+   IF not isblank($addressfile)
+      CLOSE 56
+   END-IF
+
+END-PROCEDURE
+
+!************************************************************* 
+! End of Report                                    
+!************************************************************* 
+
+BEGIN-PROCEDURE Cleanup   
+  
+   LET #report_status = #sql-status
+
+   IF (#report_status = {SUCCESS})
+      do display_results
+   ELSE
+      DISPLAY ''
+      DISPLAY 'Exiting with error status.'
+      DISPLAY ''
+   END-IF
+   do close_file
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE display_results
+
+  IF #record_count = 0
+
+     SHOW '*** NO RECORDS FOUND ***'
+     write 56 from ' '
+                     STATUS=#file-status
+     write 56 from '*** NO RECORDS FOUND ***'
+                     STATUS=#file-status
+
+  ELSE
+  
+     SHOW 'NUMBER OF RECORDS FOUND: ' #record_count 
+     SHOW 'NUMBER OF EMAILS SENT: ' #email_sent
+     SHOW 'NUMBER OF GURMAIL RECORDS INSERTED: ' #gurmail_count
+     LET $record_count = edit(#record_count,'999999')
+     LET $email_sent = edit(#email_sent,'999999')
+     LET $gurmail_count = edit(#gurmail_count,'999999')
+     write 56 from ' '
+                     STATUS=#file-status
+     write 56 from 'NUMBER OF RECORDS FOUND:            ' $record_count
+                     STATUS=#file-status
+     write 56 from 'NUMBER OF EMAILS SENT:              ' $email_sent
+                     STATUS=#file-status
+     write 56 from 'NUMBER OF GURMAIL RECORDS UPDATED:  ' $gurmail_count
+                     STATUS=#file-status
+
+  END-IF
+   
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE Error_Handler ($err_routine)
+
+   DISPLAY ''
+   DISPLAY ''
+   DISPLAY '*ERROR*  Procedure = ' noline
+   DISPLAY $err_routine
+   DISPLAY ''
+   DISPLAY 'SQL Error #: ' noline
+   DISPLAY #_sql-status 8888888
+   DISPLAY $_sql-error
+   DISPLAY ''
+   LET #_return-status = 4
+
+END-PROCEDURE
+#include 'get_database_name.sqc'              ! get current db name
+

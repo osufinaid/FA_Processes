@@ -1,0 +1,351 @@
+! ROR2360
+! Disbursement Notifications
+! **********************************************************************
+! Purpose:
+!
+! This program generates a csv file that feeds into FormFusion to
+!   notify students of their loan disbursements
+!
+! **********************************************************************
+! Parameters
+!   p1  Output File Name
+!   p2  Last Run Date
+!   p3  Audit/Update
+! **********************************************************************
+! Modification History
+! Who  When        What
+! ---  ----------- -----------------------------------------------------
+! SLT  12-JUN-2017 WO 43075 New SQR
+! **********************************************************************
+
+!|==========================================================================
+!| Setup
+!|==========================================================================
+
+BEGIN-SETUP
+   #define prog_name ROR2360
+
+   #define TRUE 1
+   #define FALSE 0
+   #define SUCCESS 0
+
+END-SETUP
+
+
+!|==========================================================================
+!| Main Program
+!|==========================================================================
+
+BEGIN-PROGRAM
+   DO initialization
+   DO main
+   DO cleanup
+END-PROGRAM
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE initialization
+   input $filename     'Please enter the input file name'     ! P1
+   input $LastRunDate  'Please enter the Last Run Date'       ! P2
+   input $RunMode      'Please enter the Run Mode (A/U)'      ! P3
+
+   Let $report_date = datetostr(datenow(),'DD-Mon-YYYY')
+   Let $report_time = datetostr(datenow(),'HH24:MI')
+   
+   Let $letter_code = 'FADISB'
+
+   do Open_File
+
+   let $line = ''
+   do csv_set_string('STUDENT ID'                        ,$line )
+   do csv_add_string('FIRST NAME'                        ,$line )
+   do csv_add_string('LAST NAME'                         ,$line )
+   do csv_add_string('LOAN STATUS'                       ,$line )
+   do csv_add_string('TERM'                              ,$line )
+   do csv_add_string('FORD FUND DESC'                    ,$line )
+   do csv_add_string('FORD PAID AMT'                     ,$line )
+   do csv_add_string('FORD PAID DATE'                    ,$line )
+   do csv_add_string('FORD PAID AMT AY'                  ,$line )
+   do csv_add_string('UNFD FUND DESC'                    ,$line )
+   do csv_add_string('UNFD PAID AMT'                     ,$line )
+   do csv_add_string('UNFD PAID DATE'                    ,$line )
+   do csv_add_string('UNFD PAID AMT AY'                  ,$line )
+   do csv_add_string('PLFD FUND DESC'                    ,$line )
+   do csv_add_string('PLFD PAID AMT'                     ,$line )
+   do csv_add_string('PLFD PAID DATE'                    ,$line )
+   do csv_add_string('PLFD PAID AMT AY'                  ,$line )
+   do csv_add_string('GPLD FUND DESC'                    ,$line )
+   do csv_add_string('GPLD PAID AMT'                     ,$line )
+   do csv_add_string('GPLD PAID DATE'                    ,$line )
+   do csv_add_string('GPLD PAID AMT AY'                  ,$line )
+   do csv_add_string('EMAIL'                             ,$line )
+   
+   WRITE 10 FROM $line -
+                   STATUS=#file-status
+
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing data record to ' noline
+         DISPLAY $filename
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+
+END-PROCEDURE
+
+!------------------------------------------------------------
+!  Open Output file
+!------------------------------------------------------------
+BEGIN-PROCEDURE Open_File
+
+   OPEN $FILENAME AS 10 for-writing RECORD=999999:vary STATUS=#file-status
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* opening ' noline
+      DISPLAY $FILENAME
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+
+END-PROCEDURE
+
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE main
+
+LET #row_cnt = 0
+
+BEGIN-SELECT distinct ON-ERROR=error_handler ('main')     
+spriden_pidm                                                                        &spriden_pidm
+spriden_id                                                                          &spriden_id
+spriden_first_name                                                                  &spriden_last_name
+spriden_last_name                                                                   &spriden_first_name
+(Select (case 
+        when MAX(RLRDLDD_SEQ_NO)  > '01'
+        THEN 'updated to the below amount(s)'
+        else 'applied to your student account'
+        end) FROM RLRDLDD 
+WHERE RLRDLDD_PIDM = SPRIDEN_PIDM 
+AND RLRDLDD_PIDM = B.RPRATRM_PIDM 
+AND RLRDLDD_PERIOD = B.RPRATRM_TERM_CODE 
+AND RLRDLDD_FEED_IND = 'F' 
+AND RLRDLDD_FUND_CODE = B.RPRATRM_FUND_CODE
+)                                                                                   &Loan_Status
+(Select stvterm_desc from stvterm where stvterm_code = b.rpratrm_term_code)         &Term 
+b.rpratrm_aidy_code                                                                 &Aidy
+(Select RFRBASE_FUND_TITLE from rfrbase where rfrbase_fund_code = (Select a.rpratrm_fund_Code from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'FORD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm))  &FORD_Fund_Desc
+(Select a.rpratrm_paid_amt from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'FORD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                      &FORD_Paid_Amt
+(Select to_char(a.rpratrm_paid_date,'DD-MON-YYYY') from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'FORD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                     &FORD_Paid_Date
+(Select rprawrd_paid_amt from rprawrd where rprawrd_pidm = b.rpratrm_pidm and rprawrd_fund_code= 'FORD' and rprawrd_aidy_code = b.rpratrm_aidy_code and rprawrd_pidm = spriden_pidm)                                                                                  &FORD_Paid_Amt_AY
+(Select RFRBASE_FUND_TITLE from rfrbase where rfrbase_fund_code = (Select a.rpratrm_fund_Code from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'UNFD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm))  &UNFD_Fund_Desc
+(Select a.rpratrm_paid_amt from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'UNFD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                      &UNFD_Paid_Amt
+(Select to_char(a.rpratrm_paid_date,'DD-MON-YYYY') from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'UNFD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                     &UNFD_Paid_Date
+(Select rprawrd_paid_amt from rprawrd where rprawrd_pidm = b.rpratrm_pidm and rprawrd_fund_code= 'UNFD' and rprawrd_aidy_code = b.rpratrm_aidy_code and rprawrd_pidm = spriden_pidm)                                                                                  &UNFD_Paid_Amt_AY
+(Select RFRBASE_FUND_TITLE from rfrbase where rfrbase_fund_code = (Select a.rpratrm_fund_Code from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'PLFD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm))  &PLFD_Fund_Desc
+(Select a.rpratrm_paid_amt from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'PLFD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                      &PLFD_Paid_Amt
+(Select to_char(a.rpratrm_paid_date,'DD-MON-YYYY') from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'PLFD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                     &PLFD_Paid_Date
+(Select rprawrd_paid_amt from rprawrd where rprawrd_pidm = b.rpratrm_pidm and rprawrd_fund_code= 'PLFD' and rprawrd_aidy_code = b.rpratrm_aidy_code and rprawrd_pidm = spriden_pidm)                                                                                  &PLFD_Paid_Amt_AY
+(Select RFRBASE_FUND_TITLE from rfrbase where rfrbase_fund_code = (Select a.rpratrm_fund_Code from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'GPLD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm))  &GPLD_Fund_Desc
+(Select a.rpratrm_paid_amt from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'GPLD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                      &GPLD_Paid_Amt
+(Select to_char(a.rpratrm_paid_date,'DD-MON-YYYY') from rpratrm a where a.rpratrm_pidm = b.rpratrm_pidm and a.rpratrm_fund_code= 'GPLD' and a.rpratrm_term_code = b.rpratrm_term_code and a.rpratrm_pidm = spriden_pidm)                                                                     &GPLD_Paid_Date
+(Select rprawrd_paid_amt from rprawrd where rprawrd_pidm = b.rpratrm_pidm and rprawrd_fund_code= 'GPLD' and rprawrd_aidy_code = b.rpratrm_aidy_code and rprawrd_pidm = spriden_pidm)                                                                                  &GPLD_Paid_Amt_AY
+ryk_common.f_get_student_email(spriden_pidm)                                      &Email
+
+
+      ADD 1 to #row_cnt
+      let #pidm = &spriden_pidm
+      
+      show 'ford: ' &FORD_Paid_Amt_AY
+      show 'unfd: ' &UNFD_Paid_Amt_AY
+      show 'plfd: ' &PLFD_Paid_Amt_AY
+      show 'gpld: ' &GPLD_Paid_Amt_AY
+      
+      
+! Write to CSV
+      let $line = ''
+      do csv_set_string(&spriden_id                        ,$line )
+      do csv_add_string(&spriden_last_name                 ,$line )
+      do csv_add_string(&spriden_first_name                ,$line )
+      do csv_add_string(&Loan_Status                       ,$line )
+      do csv_add_string(&Term                              ,$line )
+      do csv_add_string(&FORD_Fund_Desc                    ,$line )
+      if &FORD_Paid_Amt > 0
+         do csv_add_number(&FORD_Paid_Amt,    '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&FORD_Paid_Date                    ,$line )
+      if &FORD_Paid_Amt_AY > 0
+         do csv_add_number(&FORD_Paid_Amt_AY, '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&UNFD_Fund_Desc                    ,$line )
+      if &UNFD_Paid_Amt > 0
+         do csv_add_number(&UNFD_Paid_Amt,    '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&UNFD_Paid_Date                    ,$line )
+      if &UNFD_Paid_Amt_AY > 0
+         do csv_add_number(&UNFD_Paid_Amt_AY, '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&PLFD_Fund_Desc                    ,$line )
+      if &PLFD_Paid_Amt > 0
+         do csv_add_number(&PLFD_Paid_Amt,    '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&PLFD_Paid_Date                    ,$line )
+      if &PLFD_Paid_Amt_AY > 0
+         do csv_add_number(&PLFD_Paid_Amt_AY, '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&GPLD_Fund_Desc                    ,$line )
+      if &GPLD_Paid_Amt > 0
+         do csv_add_number(&GPLD_Paid_Amt,    '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&GPLD_Paid_Date                    ,$line )
+      if &GPLD_Paid_Amt_AY > 0
+         do csv_add_number(&GPLD_Paid_Amt_AY, '$88888.88'  ,$line )
+      else 
+         do csv_add_string(''                              ,$line )
+      end-if
+      do csv_add_string(&Email                             ,$line )
+      
+      WRITE 10 FROM $line -
+                   STATUS=#file-status
+
+      IF (#file-status != {SUCCESS})
+         DISPLAY '*ERROR* writing data record to ' noline
+         DISPLAY $filename
+         DISPLAY 'Error status = ' noline
+         DISPLAY #file-status 8888888
+      END-IF
+      
+   
+      do INSERT_GURMAIL
+
+
+from spriden, rpratrm b
+where spriden_pidm = b.rpratrm_pidm
+and  spriden_change_ind is null
+and nvl(b.rpratrm_paid_amt,0)>0
+and b.rpratrm_fund_code in (select rfrbase_fund_code from rfrbase where rfrbase_ftyp_code= 'LOAN' and rfrbase_fsrc_code= 'FDRL' and rfrbase_fund_title like '%Direct%')
+and b.rpratrm_paid_date >= trunc(to_date($LastRunDate,'DD-MON-YYYY'))
+END-SELECT
+
+END-PROCEDURE
+
+!*************************************************************
+! Call routine to insert gurmail record
+!*************************************************************
+
+BEGIN-PROCEDURE INSERT_GURMAIL
+
+   #DEBUGD DISPLAY 'insert GURMAIL record...'
+   LET #insert_count = 0
+   LET #insert_status = 0
+   LET $insert_error = ''
+
+begin-sql ON-ERROR=error_handler ('INSERT_GURMAIL')
+INSERT INTO GENERAL.GURMAIL
+(GURMAIL_PIDM,
+GURMAIL_SYSTEM_IND,
+GURMAIL_MODULE_CODE,
+GURMAIL_LETR_CODE,
+GURMAIL_DATE_INIT,
+GURMAIL_DATE_PRINTED,
+GURMAIL_USER,
+GURMAIL_AIDY_CODE,
+GURMAIL_ORIG_IND,
+GURMAIL_PUB_GEN,
+GURMAIL_ACTIVITY_DATE)
+VALUES
+(#pidm,
+'R',
+'R',
+$letter_code,
+SYSDATE,
+SYSDATE,
+USER,
+&Aidy,
+'S',
+'G',
+ SYSDATE)
+end-sql
+
+   LET #insert_count = #sql-count
+   LET #insert_status = #sql-status
+   LET $insert_error = $sql_error
+
+   LET #gurmail_count = #gurmail_count + #insert_count
+
+   IF (#insert_count = 0)
+      DISPLAY '*ERROR* No rows inserted!!'
+      DISPLAY 'Insert status: ' noline
+      DISPLAY #insert_status 99
+      DISPLAY 'Insert error: ' noline
+      DISPLAY $insert_error
+   END-IF
+
+END-PROCEDURE
+!|==========================================================================
+!| End of Report
+!|==========================================================================
+
+BEGIN-PROCEDURE cleanup
+
+   CLOSE 10
+
+   LET #report_status = #sql-status
+
+   IF (#report_status = {SUCCESS})
+      DO display_count
+   ELSE
+      DISPLAY 'Exiting with error status.'
+      DISPLAY ''
+   END-IF
+   
+   if $RunMode <> 'U'
+      rollback 
+      show 'Not in Update Mode - Rolling back updates'
+   end-if
+
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE display_count
+
+   IF (#row_cnt = 0)
+      DISPLAY 'No rows selected.'
+   ELSE
+      DISPLAY #row_cnt 8888888 noline
+      DISPLAY ' rows selected.'
+      SHOW 'LAST RUN DATE:   ' $LastRunDate
+      SHOW 'RUN MODE:        ' $RunMode
+   END-IF
+
+
+END-PROCEDURE
+!------------------------------------------------------------
+
+BEGIN-PROCEDURE error_handler ($err_routine)
+   DISPLAY ''
+   DISPLAY ''
+   DISPLAY '*ERROR*  Procedure = ' noline
+   DISPLAY $err_routine
+   DISPLAY ''
+   DISPLAY 'SQL Error #: ' noline
+   DISPLAY #sql-status 8888888
+   DISPLAY $sql-error
+   DISPLAY ''
+   LET #_return-status = 4
+   STOP
+END-PROCEDURE
+
+#include 'csv.sqc'                     ! parse line (for csv file)

@@ -1,0 +1,903 @@
+! ROR2290
+! Batch Post R2T4 Comments
+! **********************************************************************
+! Purpose:  
+!   Calls the applicant comment API to batch post comments for the 
+!     end-of-term R2T4 run of ROR1640.
+!
+! **********************************************************************
+! Parameters
+!   p1  Report File Name
+!   p2  Error Report File Name
+!   p3  Aid Year
+!   p4  Comment Category
+!   p5  Input Comment Text File
+!   p6  Input Student Population File
+!   p7  ID/PIDM/SSN format
+!   p8  Run Mode
+! **********************************************************************
+! Modification History
+! Who  When      What
+! ---  --------- -------------------------------------------------------
+! SLT  09-OCT-08 Initial SQR.
+! SLT  22-JAN-16 Fixed PELL and SEOG amounts in comments.
+! SLT  02-FEB-16 Fixed SUM_FLAG to include BOX_6_5.
+! SLT  08-FEB-16 Corrected BOX_D
+! **********************************************************************
+!---------------------------------------------------------------------------
+ 
+ 
+!|==========================================================================
+!| Setup
+!|==========================================================================
+ 
+BEGIN-SETUP
+   #include 'osu_includes.sqc'
+   #define prog_name ROR2290
+ 
+   #define TRUE 1
+   #define FALSE 0
+   #define SUCCESS 0
+ 
+   #define pagewidth 170
+   #define pagelength 58
+ 
+   #define header_size 5
+   #define footer_size 2
+ 
+   #define left_side 1
+   #define right_side 40
+ 
+   #define col1   1
+   #define col2   12
+   #define col3   35
+   
+   #define pitch_17
+   #include 'pdf_report_land.sqc'  
+   
+   declare-variable
+
+      date $max_lda_YYYYMMDD   
+      date $term_start_YYYYMMDD
+      date $term_end_YYYYMMDD  
+
+   end-declare
+ 
+!   DECLARE-LAYOUT control
+!      PAPER-SIZE=(8.5,11)
+!      FORMFEED=NO
+!      ORIENTATION=LANDSCAPE
+!      LEFT-MARGIN=0
+!      TOP-MARGIN=0
+!      MAX-COLUMNS={pagewidth}
+!      MAX-LINES={pagelength}
+!   END-DECLARE
+
+   DECLARE-REPORT CONTROL_G
+!      LAYOUT=control
+       LAYOUT=default
+   END-DECLARE
+
+   DECLARE-REPORT CONTROL_E
+!      LAYOUT=control
+       LAYOUT=default
+   END-DECLARE
+   
+END-SETUP
+ 
+BEGIN-HEADING {header_size}
+   FOR-REPORTS = (CONTROL_G)
+   ENCODE '<12>' into $ff
+   PRINT $ff (1,1) code
+ 
+   PRINT $report_date (1,1)
+   PRINT $report_time (,+1)
+   PRINT 'OREGON STATE UNIVERSITY' (,75)
+   PRINT 'Page' (,140)
+   PRINT #page-count (,+1) edit 999
+ 
+   PRINT $aid_year             (2,66)
+   PRINT ' Comments Added to Students - ' (,)
+   IF $mode = 'U'
+      PRINT 'Update Mode'                         (,)
+   ELSE
+      PRINT 'Report Mode'                         (,)
+   END-IF
+         
+   PRINT '{prog_name}' (,140)   
+   
+   PRINT 'ID'              (+2,{col1})
+   PRINT 'Name'            (,{col2})
+   PRINT 'Message'         (,{col3})
+
+   PRINT '---------'       (+1,{col1}
+   PRINT '----------------------'  (,{col2})
+   PRINT '--------------------------------------------------------------'         (,{col3})
+
+
+     
+ END-HEADING
+ 
+BEGIN-HEADING {header_size}
+   FOR-REPORTS = (CONTROL_E)
+   ENCODE '<12>' into $ff
+   PRINT $ff (1,1) code
+ 
+   PRINT $report_date (1,1)
+   PRINT $report_time (,+1)
+   PRINT 'OREGON STATE UNIVERSITY' (,75)
+   PRINT 'Page' (,140)
+   PRINT #page-count (,+1) edit 999
+
+   PRINT $aid_year             (2,66) 
+   PRINT ' Comment Error Report - ' (,)
+   IF $mode = 'U'
+      PRINT 'Update Mode'                         (,)
+   ELSE
+      PRINT 'Report Mode'                         (,)
+   END-IF
+         
+   PRINT '{prog_name}' (,140)   
+   
+   PRINT 'ID'              (+2,{col1})
+   PRINT 'Name'            (,{col2})
+   PRINT 'Message'         (,{col3})
+
+   PRINT '---------'       (+1,{col1}                                                      
+   PRINT '----------------------'  (,{col2})                                          
+   PRINT '--------------------------------------------------------------'         (,{col3})
+
+    
+ END-HEADING 
+ 
+!|==========================================================================
+!| Main Program
+!|==========================================================================
+ 
+BEGIN-PROGRAM
+   do initialization
+   do main
+   do cleanup
+END-PROGRAM
+ 
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE initialization
+   input $filename1    'Enter Report File Name'           ! P0
+   input $filename2    'Enter Error Report File Name'     ! P1
+   input $aid_year     'Enter Aid Year'                   ! P2
+   input $student_file 'Enter Student File'               ! P3
+   input $output_file  'Enter Output File'                ! P4
+   input $mode         'Enter Audit/Update Mode'          ! P5
+
+
+ 
+   Let $report_date = datetostr(datenow(),'MM/DD/YYYY')
+   Let $report_time = datetostr(datenow(),'HH24:MI')
+
+   
+   #include 'pdf_alter_printer.sqc'
+ 
+   USE-REPORT CONTROL_G
+   NEW-REPORT $filename1
+    
+   print '' (0,2)          !print dummy to force headings 
+ 
+   USE-REPORT CONTROL_E
+   NEW-REPORT $filename2
+     
+   print '' (0,2)          !print dummy to force headings 
+
+   LET $comment_cat = 'R2T4'
+   LET $mode = upper($mode)
+   LET #record_count = 0
+   LET #load_count = 0
+   LET #error_count = 0
+   LET #file_count = 0
+
+   Do Open_output_File  
+   Do Open_Student_File  
+   
+   let $line = ''
+   do csv_set_string('ID'                 ,$line )
+   do csv_add_string('NAME'               ,$line )
+   do csv_add_string('LDA/WITHDRAW'       ,$line )
+   do csv_add_string('BOX_A',   $line )
+   do csv_add_string('BOX_B',   $line )
+   do csv_add_string('BOX_C',   $line )
+   do csv_add_string('BOX_D',   $line )
+   do csv_add_string('BOX_E',   $line )
+   do csv_add_string('BOX_F',   $line )
+   do csv_add_string('BOX_G',   $line )
+   do csv_add_string('BOX_H',   $line )
+   do csv_add_string('BOX_I',   $line )
+   do csv_add_string('BOX_J',   $line )
+   do csv_add_string('BOX_K',   $line )
+   do csv_add_string('BOX_L',   $line )
+   do csv_add_string('BOX_M',   $line )
+   do csv_add_string('BOX_N',   $line )
+   do csv_add_string('BOX_O',   $line )
+   do csv_add_string('BOX_P',   $line )
+   do csv_add_string('BOX_Q',   $line )
+   do csv_add_string('BOX_R',   $line )
+   do csv_add_string('BOX_S',   $line )
+   do csv_add_string('BOX_T',   $line )
+   do csv_add_string('BOX_U',   $line )
+   do csv_add_string('BOX_6_1', $line )
+   do csv_add_string('BOX_6_2', $line )
+   do csv_add_string('BOX_6_3', $line )
+   do csv_add_string('BOX_6_4', $line )
+   do csv_add_string('BOX_6_5', $line )
+   do csv_add_string('BOX_6_6', $line )
+   do csv_add_string('BOX_6_9', $line )
+   do csv_add_string('BOX_10_1',$line )
+   do csv_add_string('BOX_10_4',$line )
+
+   WRITE 22 FROM $line -
+                STATUS=#file-status
+
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* writing data record to ' noline
+      DISPLAY $output_file
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+
+ 
+END-PROCEDURE
+
+!************************************************************* 
+! Open the student file                                  
+!************************************************************* 
+Begin-Procedure Open_output_file
+   
+   Show 'opening ' $output_file
+   Open $output_file As 22 for-writing  record = 5000:vary
+    status=#File_Status
+
+   If (#File-Status != {Success})
+      Display '*Error* Opening ' Noline
+      Display $output_file
+      Display 'error Status = ' Noline
+      Display #File-Status 8888888    
+      rollback
+      stop
+   End-If
+
+End-Procedure 
+
+!************************************************************* 
+! Open the student file                                  
+!************************************************************* 
+Begin-Procedure Open_Student_File
+   
+   Show 'opening ' $student_file
+   Open $student_file As 21 For-Reading Record=9999 Status=#File-Status
+
+   If (#File-Status != {Success})
+      Display '*Error* Opening ' Noline
+      Display $student_file
+      Display 'error Status = ' Noline
+      Display #File-Status 8888888    
+      rollback
+      stop
+   End-If
+
+End-Procedure 
+
+!************************************************************* 
+! read input file and load array for further processing                                 
+!************************************************************* 
+BEGIN-PROCEDURE main
+   let #end-file = 0 
+   let $delim =  ','  
+   let #record_count = 0
+   let #file_count = 0
+   let #load_count = 0
+   LET $error_msg = ''   
+   LET #error = 0
+                         
+   while #end-file = 0                 
+      read 21 into $line:9999
+      let #record_count = #record_count + 1
+!      show #end-file ' ' #record_count
+      if #end-file = 0 and #record_count > 1
+         do csv_get_field($line,$current_term)
+         do csv_get_field($line,$SPRIDEN_FIRST_NAME)
+         do csv_get_field($line,$SPRIDEN_LAST_NAME)
+         do csv_get_field($line,$SPRIDEN_ID)  
+         do csv_get_field($line,$max_lda) 
+         do csv_get_field($line,$PELL_PAID_AMT) 
+         do csv_get_field($line,$PELL_ACCEPT_AMT)
+         do csv_get_field($line,$SEOG_PAID_AMT)
+         do csv_get_field($line,$SEOG_ACCEPT_AMT)
+         do csv_get_field($line,$UNFD_PAID_AMT)
+         do csv_get_field($line,$UNFD_TOTAL_NET_AMT)
+         do csv_get_field($line,$FORD_PAID_AMT)
+         do csv_get_field($line,$FORD_TOTAL_NET_AMT)
+         do csv_get_field($line,$PERK_PAID_AMT)
+         do csv_get_field($line,$PERK_ACCEPT_AMT)
+         do csv_get_field($line,$GPLD_PAID_AMT)
+         do csv_get_field($line,$GPLD_TOTAL_NET_AMT)
+         do csv_get_field($line,$PLFD_PAID_AMT)
+         do csv_get_field($line,$PLFD_TOTAL_NET_AMT)
+         do csv_get_field($line,$stvterm_start_date)
+         do csv_get_field($line,$stvterm_end_date)
+         do csv_get_field($line,$TUITION_AMT)
+         do csv_get_field($line,$ROOM_AMT)
+         do csv_get_field($line,$MEAL_PLAN_AMT)
+         do csv_get_field($line,$STUDENT_FEE_AMT)
+         do csv_get_field($line,$DISTANCE_TUITION_AMT)
+         do csv_get_field($line,$DPP_TUITION_AMT)
+         do csv_get_field($line,$street)  
+         do csv_get_field($line,$street2) 
+         do csv_get_field($line,$street3) 
+         do csv_get_field($line,$CITY_STATE_ZIP)
+         do csv_get_field($line,$letter_term_text)
+         do csv_get_field($line,$input_pgm)
+         
+         SHOW $SPRIDEN_ID
+         
+         let #file_count = #file_count + 1
+         
+         if $input_pgm = 'ROR1640'
+            LET $wd_or_lda = 'LDA'
+         else 
+            LET $wd_or_lda = 'WD'
+         end-if
+         
+
+         LET $error_msg = ''  
+         LET #error = 0
+         
+         Let $id = $SPRIDEN_ID
+         Do get_pidm_from_id
+         Let #pidm = &pidm_from_id
+                  
+         let $name = substr($SPRIDEN_LAST_NAME ||', '||$SPRIDEN_FIRST_NAME,1,22)
+               
+         if #pidm_found
+         
+            LET #BOX_A = 0
+            LET #BOX_B = 0
+            LET #BOX_C = 0
+            LET #BOX_D = 0
+            LET #BOX_E = 0
+            LET #BOX_F = 0
+            LET #BOX_G = 0
+            LET #BOX_H = 0
+            LET #BOX_I = 0
+            LET #BOX_J = 0
+            LET #BOX_K = 0
+            LET #BOX_L = 0
+            LET #BOX_M = 0
+            LET #BOX_N = 0
+            LET #BOX_O = 0
+            LET #BOX_P = 0
+            LET #BOX_Q = 0
+            LET #BOX_R = 0
+            LET #BOX_S = 0
+            LET #BOX_T = 0
+            LET #BOX_U = 0
+            LET #BOX_6_1 = 0
+            LET #BOX_6_2 = 0
+            LET #BOX_6_3 = 0
+            LET #BOX_6_4 = 0
+            LET #BOX_6_5 = 0
+            LET #BOX_6_6 = 0
+            LET #BOX_6_9 = 0
+            LET #BOX_10_1 = 0
+            LET #BOX_10_4 = 0
+         
+            Do check_rorstat
+            
+            if $rorstat_exists = 'Y'
+            
+               LET #PELL_PAID_AMT                = to_number(translate($PELL_PAID_AMT,',','')) 
+               LET #PELL_ACCEPT_AMT              = to_number(translate($PELL_ACCEPT_AMT,',','')) 
+               LET #SEOG_PAID_AMT                = to_number(translate($SEOG_PAID_AMT,',','')) 
+               LET #SEOG_ACCEPT_AMT              = to_number(translate($SEOG_ACCEPT_AMT,',','')) 
+               LET #UNFD_PAID_AMT                = to_number(translate($UNFD_PAID_AMT,',',''))
+               LET #UNFD_TOTAL_NET_AMT           = to_number(translate($UNFD_TOTAL_NET_AMT,',','')) 
+               LET #FORD_PAID_AMT                = to_number(translate($FORD_PAID_AMT,',','')) 
+               LET #FORD_TOTAL_NET_AMT           = to_number(translate($FORD_TOTAL_NET_AMT,',','')) 
+               LET #PERK_PAID_AMT                = to_number(translate($PERK_PAID_AMT,',','')) 
+               LET #PERK_ACCEPT_AMT              = to_number(translate($PERK_ACCEPT_AMT,',','')) 
+               LET #GPLD_PAID_AMT                = to_number(translate($GPLD_PAID_AMT,',','')) 
+               LET #GPLD_TOTAL_NET_AMT           = to_number(translate($GPLD_TOTAL_NET_AMT,',','')) 
+               LET #PLFD_PAID_AMT                = to_number(translate($PLFD_PAID_AMT,',','')) 
+               LET #PLFD_TOTAL_NET_AMT           = to_number(translate($PLFD_TOTAL_NET_AMT,',','')) 
+               LET #TUITION_AMT                  = to_number(translate($TUITION_AMT,',','')) 
+               LET #ROOM_AMT                     = to_number(translate($ROOM_AMT,',','')) 
+               LET #MEAL_PLAN_AMT                = to_number(translate($MEAL_PLAN_AMT,',','')) 
+               LET #STUDENT_FEE_AMT              = to_number(translate($STUDENT_FEE_AMT,',','')) 
+               LET #DISTANCE_TUITION_AMT         = to_number(translate($DISTANCE_TUITION_AMT,',','')) 
+               LET #DPP_TUITION_AMT              = to_number(translate($DPP_TUITION_AMT,',','')) 
+               LET $max_lda_YYYYMMDD             = strtodate($max_lda,'YYYYMMDD')  
+               LET $term_start_YYYYMMDD          = strtodate($stvterm_start_date,'YYYYMMDD') 
+               LET $term_end_YYYYMMDD            = strtodate($stvterm_end_date,'YYYYMMDD') 
+               LET $max_lda_print                = datetostr(strtodate($max_lda,'YYYYMMDD'),'MM/DD/YYYY')
+               LET #total_term_days              = datediff($term_end_YYYYMMDD,$term_start_YYYYMMDD,'day') + 1
+         
+!               show 'TOTAL_TERM_DAYS:     ' #total_term_days
+!               show 'TERM_START_YYYYMMDD: ' $stvterm_start
+!               show 'TERM_END_YYYYMMDD:   ' $stvterm_end
+!               show 'UNFD Paid Amt:       ' #UNFD_PAID_AMT ' ' $UNFD_PAID_AMT
+               
+               
+               if not isblank($max_lda)
+               
+                  LET #BOX_A = #PELL_PAID_AMT + #SEOG_PAID_AMT
+                  LET #BOX_B = #UNFD_PAID_AMT  + #FORD_PAID_AMT + #PERK_PAID_AMT + #GPLD_PAID_AMT + #PLFD_PAID_AMT
+                  LET #BOX_C = #PELL_ACCEPT_AMT + #SEOG_ACCEPT_AMT
+                  LET #BOX_D = #UNFD_TOTAL_NET_AMT + #FORD_TOTAL_NET_AMT + #PERK_ACCEPT_AMT + #GPLD_TOTAL_NET_AMT + #PLFD_TOTAL_NET_AMT
+                  LET #BOX_E = #BOX_A + #BOX_B
+                  LET #BOX_F = #BOX_A + #BOX_C
+                  LET #COMPLETED_DAYS = datediff($max_lda_YYYYMMDD,$term_start_YYYYMMDD,'day') + 1
+                  
+                  
+                  if #total_term_days > 0
+                     LET #PERCENTAGE_COMPLETED = round(100*(#completed_days/#total_term_days),1)
+                     LET #FRACTION_COMPLETED = #completed_days/#total_term_days
+                  else 
+                     LET #PERCENTAGE_COMPLETED = 0
+                     LET #FRACTION_COMPLETED = 0
+                  end-if 
+                  
+!                  show 'MAX_LDA:        ' $max_lda               
+!                  show 'COMPLETED_DAYS: ' #COMPLETED_DAYS        
+!                  show 'FRACTION_COMPLETED: ' #FRACTION_COMPLETED
+                  
+                  
+                  LET #BOX_G = #BOX_A + #BOX_B + #BOX_C + #BOX_D
+                  LET $PERCENTAGE_COMPLETED = edit(#PERCENTAGE_COMPLETED,'999.9')
+                  if #PERCENTAGE_COMPLETED > 60
+                      LET #BOX_H = 100
+                      LET #FRACTION_COMPLETED = 1
+                  else 
+                      LET #BOX_H = #PERCENTAGE_COMPLETED
+                  end-if 
+                  LET #BOX_I = round((#FRACTION_COMPLETED * #BOX_G),0)
+                  LET #BOX_J = #BOX_I - #BOX_E
+                  LET #BOX_K = #BOX_E - #BOX_I
+                  LET $RETURN_GRANT_BY_STUDENT = ''
+                  if #BOX_J <= 0
+                     LET #BOX_J = 0
+                  else
+                     LET $RETURN_GRANT_BY_STUDENT = edit(#BOX_J,'88889')
+                  end-if 
+                  if #BOX_K <= 0
+                     LET #BOX_K = 0
+                  end-if 
+                  LET #BOX_L = #TUITION_AMT + #ROOM_AMT + #MEAL_PLAN_AMT + #STUDENT_FEE_AMT + #DISTANCE_TUITION_AMT + #DPP_TUITION_AMT      
+                  LET #BOX_M = 100 - #BOX_H
+                  LET #BOX_N = round(((#BOX_M/100)*#BOX_L),0)
+                  if #BOX_K < #BOX_N
+                     LET #BOX_O = #BOX_K
+                  else 
+                     LET #BOX_O = #BOX_N
+                  end-if 
+                  
+   !    BOX 6     
+   !    UNFD      
+                  LET #BOX_6_REMAIN = #BOX_O
+                  if #UNFD_PAID_AMT - #BOX_6_REMAIN > 0
+                     LET #BOX_6_1 = #BOX_6_REMAIN
+                     LET #BOX_6_REMAIN = 0
+                  else 
+                     LET #BOX_6_1 = #UNFD_PAID_AMT 
+                     LET #BOX_6_REMAIN = #BOX_6_REMAIN - #UNFD_PAID_AMT
+   !    FORD      
+                     if #BOX_6_REMAIN > 0
+                         if #FORD_PAID_AMT - #BOX_6_REMAIN > 0
+                            LET #BOX_6_2 = #BOX_6_REMAIN
+                            LET #BOX_6_REMAIN = 0
+                         else 
+                            LET #BOX_6_2 = #FORD_PAID_AMT                     
+                            LET #BOX_6_REMAIN = #BOX_6_REMAIN - #FORD_PAID_AMT
+   !    PERK      
+                            if #BOX_6_REMAIN > 0
+                                if #PERK_PAID_AMT - #BOX_6_REMAIN > 0
+                                   LET #BOX_6_3 = #BOX_6_REMAIN
+                                   LET #BOX_6_REMAIN = 0
+                                else 
+                                   LET #BOX_6_3 = #PERK_PAID_AMT                     
+                                   LET #BOX_6_REMAIN = #BOX_6_REMAIN - #PERK_PAID_AMT            
+   !    GPLD                
+                                   if #BOX_6_REMAIN > 0
+                                       if #GPLD_PAID_AMT - #BOX_6_REMAIN > 0
+                                          LET #BOX_6_4 = #BOX_6_REMAIN
+                                          LET #BOX_6_REMAIN = 0
+                                       else 
+                                          LET #BOX_6_4 = #GPLD_PAID_AMT                     
+                                          LET #BOX_6_REMAIN = #BOX_6_REMAIN - #GPLD_PAID_AMT
+   !    PLFD                
+                                          if #BOX_6_REMAIN > 0
+                                              if #PLFD_PAID_AMT - #BOX_6_REMAIN > 0
+                                                 LET #BOX_6_5 = #BOX_6_REMAIN
+                                                 LET #BOX_6_REMAIN = 0
+                                              else 
+                                                 LET #BOX_6_5 = #PLFD_PAID_AMT                     
+                                                 LET #BOX_6_REMAIN = #BOX_6_REMAIN - #PLFD_PAID_AMT
+   !    PELL                
+                                                 if #BOX_6_REMAIN > 0
+                                                     if #PELL_PAID_AMT - #BOX_6_REMAIN > 0
+                                                        LET #BOX_6_6 = #BOX_6_REMAIN
+                                                        LET #BOX_6_REMAIN = 0
+                                                     else 
+                                                        LET #BOX_6_6 = #PELL_PAID_AMT                     
+                                                        LET #BOX_6_REMAIN = #BOX_6_REMAIN - #PELL_PAID_AMT
+   !    SEOG                
+                                                        if #BOX_6_REMAIN > 0
+                                                            if #SEOG_PAID_AMT - #BOX_6_REMAIN > 0
+                                                               LET #BOX_6_9 = #BOX_6_REMAIN
+                                                               LET #BOX_6_REMAIN = 0
+                                                            else 
+                                                               LET #BOX_6_9 = #SEOG_PAID_AMT                     
+                                                               LET #BOX_6_REMAIN = #BOX_6_REMAIN - #SEOG_PAID_AMT
+                                                            end-if 
+                                                        end-if 
+                                                     end-if 
+                                                 end-if 
+                                              end-if 
+                                          end-if 
+                                       end-if 
+                                   end-if 
+                                end-if 
+                            end-if
+                         end-if 
+                     end-if 
+                  end-if 
+                  
+                  LET #BOX_P = #BOX_6_1 + #BOX_6_2 + #BOX_6_3 + #BOX_6_4 + #BOX_6_5
+                  LET #BOX_Q = #BOX_K - #BOX_O
+                  if #BOX_Q > 0
+                     LET #BOX_R = #BOX_B - #BOX_P
+                     if #BOX_Q > #BOX_R
+                  
+                        LET #BOX_S = #BOX_Q - #BOX_R
+                        LET #BOX_T = round((#BOX_F * 0.5),0)
+                        if #BOX_S > #BOX_T
+                           LET #BOX_U = #BOX_S - #BOX_T
+                        else 
+                           LET #BOX_U = 0
+                        end-if 
+                        if #BOX_U > 0
+                  ! BOX 10
+                  ! PELL - any PELL from Box 6
+                           LET #BOX_10_REMAIN = #BOX_U
+                           LET #TEMP_AMT = #PELL_PAID_AMT - #BOX_6_6
+                           if #TEMP_AMT - #BOX_10_REMAIN > 0
+                              LET #BOX_10_1 = #BOX_10_REMAIN
+                              LET #BOX_10_REMAIN = 0
+                           else 
+                              LET #BOX_10_1 = #TEMP_AMT
+                              LET #BOX_10_REMAIN = #BOX_10_REMAIN - #TEMP_AMT
+                  ! SEOG
+                              LET #TEMP_AMT = #SEOG_PAID_AMT - #BOX_6_9
+                              if #BOX_10_REMAIN > 0
+                                  if #TEMP_AMT - #BOX_10_REMAIN > 0
+                                     LET #BOX_10_4 = #BOX_10_REMAIN
+                                     LET #BOX_10_REMAIN = 0
+                                  else 
+                                     LET #BOX_10_4 = #TEMP_AMT                     
+                                     LET #BOX_10_REMAIN = #BOX_10_REMAIN - #TEMP_AMT
+                                  end-if 
+                              end-if 
+                           end-if 
+                        end-if  
+                     end-if
+                  end-if  
+                      
+                  LET #PELL_LETTER = #BOX_6_6 + #BOX_10_1
+                  LET #SEOG_LETTER = #BOX_6_9 + #BOX_10_4
+                  LET #SUM_FLAG = #BOX_6_1 + #BOX_6_2 + #BOX_6_3 + #BOX_6_4 + #BOX_6_5 + #PELL_LETTER + #SEOG_LETTER   
+                  
+                  LET $percent_completed = edit(#BOX_H,'88889.9')
+                  
+                  if #SUM_FLAG > 0  
+                  
+                     LET $UNFD_completed = ''
+                     LET $FORD_completed = ''
+                     LET $PERK_completed = ''
+                     LET $GPLD_completed = ''
+                     LET $PLFD_completed = ''
+                     LET $PELL_completed = ''
+                     LET $SEOG_completed = ''
+                     
+                     if #PELL_LETTER > 0
+                        LET $PELL_completed = '$'||edit(#PELL_LETTER,'88889')||' PELL; '
+                     end-if
+                     if #SEOG_LETTER > 0
+                        LET $SEOG_completed = '$'||edit(#SEOG_LETTER,'88889')||' SEOG; '
+                     end-if
+                     if #BOX_6_1 > 0
+                        LET $UNFD_completed = '$'||edit(#BOX_6_1,'88889')||' UNFD; '
+                     end-if
+                     if #BOX_6_2 > 0
+                        LET $FORD_completed = '$'||edit(#BOX_6_2,'88889')||' FORD; '
+                     end-if
+                     if #BOX_6_3 > 0
+                        LET $PERK_completed = '$'||edit(#BOX_6_3,'88889')||' PERK; '
+                     end-if
+                     if #BOX_6_4 > 0
+                        LET $GPLD_completed = '$'||edit(#BOX_6_4,'88889')||' GPLD; '
+                     end-if
+                     if #BOX_6_5 > 0
+                        LET $PLFD_completed = '$'||edit(#BOX_6_5,'88889')||' PLFD '
+                     end-if
+                  
+                     let $comment_text = 'R2T4 '||$current_term||': Calc done '||$report_date||' '||$wd_or_lda||' '||$max_lda_print||'. Completed '||$PERCENTAGE_COMPLETED||'%. Returned '||
+                         $PELL_completed|| $SEOG_completed|| $UNFD_completed|| $FORD_completed|| $PERK_completed|| $GPLD_completed|| $PLFD_completed||'(net loan amounts) on '||$report_date||'.'
+                  else  
+                     let $comment_text = 'R2T4 '||$current_term||': calc done '||$report_date||'. '||$wd_or_lda||' '||$max_lda_print||'. Completed '||$PERCENTAGE_COMPLETED||'%. No return of funds required.' 
+                  end-if
+                  
+                  Do get_max_seqno
+                  
+                  DO create_comment
+                  
+                  LET $error_msg = $comment_text
+               
+               else 
+               
+                  LET $error_msg = 'No LDA/Withdraw Date'
+                  LET #error = 1
+               
+               end-if
+               
+               DO write_csv
+               
+             else 
+            
+               LET $error_msg = 'No RORSTAT record for: '||$spriden_id
+               LET #error = 1
+            
+            end-if
+           
+         else
+            
+             LET $error_msg = 'INVALID ID/PIDM/SSN: '||$spriden_id
+             LET #error = 1
+             
+         end-if
+         
+         #DEBUGD SHOW 'ERROR: ' $error_msg
+         
+         if #error
+            ADD 1 to #error_count
+            USE-REPORT CONTROL_E
+         else
+            ADD 1 to #load_count
+            USE-REPORT CONTROL_G
+         end-if
+
+         
+         PRINT $id                (+1,{col1})
+         PRINT $name              (,{col2})
+         PRINT $error_msg         (,{col3}) WRAP 132 2
+      
+      end-if
+
+   end-while   
+                            
+   close 21       
+    
+    
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE get_pidm_from_id
+
+   LET #pidm_found = 0
+
+BEGIN-SELECT  ON-ERROR=error_handler ('get_pidm_from_id')
+substr(SPRIDEN_LAST_NAME||', '||SPRIDEN_FIRST_NAME||' '||SPRIDEN_MI,1,30)  &name_from_id
+SPRIDEN_PIDM                                                               &pidm_from_id
+
+   LET #pidm_found = 1
+
+FROM SPRIDEN
+WHERE SPRIDEN_ID = $spriden_id
+AND SPRIDEN_CHANGE_IND IS NULL
+   
+END-SELECT
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE get_max_seqno
+
+  LET #seqno = 0
+  
+BEGIN-SELECT  ON-ERROR=error_handler ('get_max_seqno')
+NVL(MAX(RHRCOMM_SEQNO), 0) + 1    &seqno
+
+  LET #seqno = &seqno
+
+FROM   RHRCOMM
+WHERE  RHRCOMM_PIDM = #pidm 
+   
+END-SELECT
+END-PROCEDURE  
+
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE check_rorstat
+
+  LET $rorstat_exists = ''
+
+BEGIN-SELECT ON-ERROR=error_handler ('check_rorstat')
+rp_applicant_status.f_exists($aid_year,#pidm)    &rorstat_exists  
+
+   LET $rorstat_exists = &rorstat_exists
+   
+from dual                   
+
+END-SELECT
+END-PROCEDURE 
+
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE create_comment
+
+  LET $error_msg = ''
+  LET $comment_rowid = ''
+
+!  SHOW $SPRIDEN_ID ' ' $comment_text
+
+BEGIN-SQL ON-ERROR=error_handler ('create_comment')
+
+DECLARE
+lv_msgtab                               gb_common.msgtab;;
+BEGIN
+rb_applicant_comment.p_create(p_pidm          => #pidm,                                
+                              p_seqno         => #seqno,                               
+                              p_user_id       => USER,
+                              p_orig_date     => sysdate,              
+                              p_aidy_code     => $aid_year,              
+                              p_comment       => $comment_text,                
+                              p_category_code => $comment_cat,          
+                              p_data_origin   => 'ROR2290',            
+                              p_rowid_out     => $comment_rowid)                    
+                              ;;
+EXCEPTION  
+   WHEN others THEN
+    IF SQLCODE = gb_common_strings.err_code THEN
+        lv_msgtab  := gb_common.f_err_msg_remove_delim_tbl(SQLERRM);;
+        $error_msg := lv_msgtab(1);;
+    END IF;;    
+END;;
+END-SQL 
+END-PROCEDURE
+
+!---------------------------------------------------------------------------
+
+BEGIN-PROCEDURE write_csv
+
+   let $line = ''
+   do csv_set_string($spriden_id          ,$line )
+   do csv_add_string($name                ,$line )
+   do csv_add_string($max_lda_print       ,$line )
+   do csv_add_number(#BOX_A, '999999.99'     ,$line )
+   do csv_add_number(#BOX_B, '999999.99'     ,$line )
+   do csv_add_number(#BOX_C, '999999.99'     ,$line )
+   do csv_add_number(#BOX_D, '999999.99'     ,$line )
+   do csv_add_number(#BOX_E, '999999.99'     ,$line )
+   do csv_add_number(#BOX_F, '999999.99'     ,$line )
+   do csv_add_number(#BOX_G, '999999.99'     ,$line )
+   do csv_add_number(#BOX_H, '999999.99'     ,$line )
+   do csv_add_number(#BOX_I, '999999.99'     ,$line )
+   do csv_add_number(#BOX_J, '999999.99'     ,$line )
+   do csv_add_number(#BOX_K, '999999.99'     ,$line )
+   do csv_add_number(#BOX_L, '999999.99'     ,$line )
+   do csv_add_number(#BOX_M, '999999.99'     ,$line )
+   do csv_add_number(#BOX_N, '999999.99'     ,$line )
+   do csv_add_number(#BOX_O, '999999.99'     ,$line )
+   do csv_add_number(#BOX_P, '999999.99'     ,$line )
+   do csv_add_number(#BOX_Q, '999999.99'     ,$line )
+   do csv_add_number(#BOX_R, '999999.99'     ,$line )
+   do csv_add_number(#BOX_S, '999999.99'     ,$line )
+   do csv_add_number(#BOX_T, '999999.99'     ,$line )
+   do csv_add_number(#BOX_U, '999999.99'     ,$line )
+   do csv_add_number(#BOX_6_1, '999999.99'   ,$line )
+   do csv_add_number(#BOX_6_2, '999999.99'   ,$line )
+   do csv_add_number(#BOX_6_3, '999999.99'   ,$line )
+   do csv_add_number(#BOX_6_4, '999999.99'   ,$line )
+   do csv_add_number(#BOX_6_5, '999999.99'   ,$line )
+   do csv_add_number(#BOX_6_6, '999999.99'   ,$line )
+   do csv_add_number(#BOX_6_9, '999999.99'   ,$line )
+   do csv_add_number(#BOX_10_1, '999999.99'   ,$line )
+   do csv_add_number(#BOX_10_4, '999999.99'   ,$line )
+
+   WRITE 22 FROM $line -
+                STATUS=#file-status
+
+   IF (#file-status != {SUCCESS})
+      DISPLAY '*ERROR* writing data record to ' noline
+      DISPLAY $output_file
+      DISPLAY 'Error status = ' noline
+      DISPLAY #file-status 8888888
+   END-IF
+   
+END-PROCEDURE
+
+!|==========================================================================
+!| End of Report
+!|==========================================================================
+ 
+BEGIN-PROCEDURE cleanup
+
+   LET #report_status = #sql-status
+ 
+   IF (#report_status = {SUCCESS})
+      DO display_count
+   ELSE
+      DISPLAY 'Exiting with error status.'
+      DISPLAY ''
+   END-IF
+
+   IF $mode <> 'U'
+      ROLLBACK
+      Show 'Rolling back updates...'
+   END-IF
+
+   #DEBUGD rollback
+   #DEBUGD Show 'Rolling back updates in debug mode'
+ 
+END-PROCEDURE
+ 
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE display_count
+
+   IF (#file_count = 0)
+      DISPLAY 'No rows selected.'
+   ELSE
+      DISPLAY #file_count 8888888 noline
+      DISPLAY ' rows selected.'
+      USE-REPORT CONTROL_G
+      PRINT '                  AID YEAR: ' (+5,5)
+      PRINT $aid_year                      (,)
+      PRINT '              AUDIT/UPDATE: ' (+1,5)
+      PRINT $mode                          (,)
+      PRINT '          STUDENTS IN FILE: ' (+1,5)
+      PRINT #file_count                    (,) edit 8,888,888  
+      PRINT '          COMMENTS CREATED: ' (+1,5)
+      PRINT #load_count                    (,) edit 8,888,888
+      PRINT '                    ERRORS: ' (+1,5)
+      PRINT #error_count                   (,) edit 8,888,888
+      USE-REPORT CONTROL_E
+      PRINT '                  AID YEAR: ' (+5,5)
+      PRINT $aid_year                      (,)
+      PRINT '              AUDIT/UPDATE: ' (+1,5)
+      PRINT $mode                          (,)
+      PRINT '          STUDENTS IN FILE: ' (+1,5)
+      PRINT #file_count                    (,) edit 8,888,888
+      PRINT '          COMMENTS CREATED: ' (+1,5)
+      PRINT #load_count                    (,) edit 8,888,888
+      PRINT '                    ERRORS: ' (+1,5)
+      PRINT #error_count                   (,) edit 8,888,888
+   END-IF
+
+END-PROCEDURE
+ 
+!---------------------------------------------------------------------------
+ 
+BEGIN-PROCEDURE error_handler ($err_routine)
+   DISPLAY ''
+   DISPLAY ''
+   DISPLAY '*ERROR*  Procedure = ' noline
+   DISPLAY $err_routine
+   DISPLAY ''
+   DISPLAY 'SQL Error #: ' noline
+   DISPLAY #_sql-status 8888888
+   DISPLAY $_sql-error
+   DISPLAY ''
+   LET #_return-status = 4
+   ROLLBACK
+   STOP
+END-PROCEDURE
+
+#include 'csv.sqc'                     ! parse line (for csv file)

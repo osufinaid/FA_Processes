@@ -1,0 +1,81 @@
+<mjml>
+  <mj-head>
+    <mj-title>OSU's Consumer Information Resource</mj-title>
+    <mj-preview><!-- Pre-header Text--></mj-preview>
+    <mj-attributes>
+      <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text font-weight="400" font-size="14px" color="#000000" line-height="24px" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-text>
+    </mj-attributes>
+
+    <mj-style inline="inline">
+      .text-link { color: #5e6ebf }
+    </mj-style>
+    <mj-style inline="inline">
+      .footer-link { color: #888888 }
+    </mj-style>
+
+  </mj-head>
+  <mj-body background-color="#e3ded9" width="600px">
+      <mj-section background-color="#e3ded9" padding-bottom="0" full-width="full-width" background-color="#e3ded9" padding-bottom="0">
+        <mj-column width="100%" background-color="#d73f09">
+          <mj-image src="https://financialaid.oregonstate.edu/sites/financialaid.oregonstate.edu/files/osu_fa_horizontal_2c_w_over_b.png" alt="Oregon State University Financial Aid" align="left" width="225px" />
+        </mj-column>
+        
+      </mj-section>
+ 
+    
+    
+    <mj-wrapper padding-top="0" padding-bottom="40px">
+      <mj-section background-color="#ffffff" padding-left="15px" padding-right="15px">
+        <mj-column width="100%">
+          <mj-text color="#d73f09" font-weight="bold" font-size="20px">
+           
+          </mj-text>
+
+        
+
+          <mj-text color="#637381">
+            Dear :FNAME :LNAME, OSU ID :OSU_ID
+          </mj-text>
+          <mj-text color="#637381">
+  			<p>The Census Date for Financial Aid is the point at which your enrollment is locked for financial aid consideration and coincides with the last date you can add or drop classes for a full tuition refund. </p>
+<p>For the Spring census, your credit hours were locked at 8 credits on June 8, 2016. Because your enrollment is less than full-time as of the census date, your financial aid may need to be adjusted to reflect your official enrollment level, Half-time. Credits added after the Census Date will not be used to increase financial aid eligibility.</p> 
+<p>You must maintain at least a half-time enrollment level to be eligible for Financial Aid (except for the Pell Grant). Pell Grant funds will be prorated based on your enrollment level. Your Cost of Attendance will also be adjusted which may or may not impact your loan funds.</p>
+
+<p>Please review your student billing account online after June 15, 2016 for any adjustments to your Spring financial aid. You will be responsible for repaying any aid that was adjusted due to the change in your enrollment. The next billing statement will be sent on July 5, 2016. </p> 
+<p>Sincerely,</p> 
+
+	  Office of Financial Aid
+   <br /> Oregon State University
+           </mj-text>
+<mj-image align="left" width = "200%" src="https://financialaid.oregonstate.edu/sites/financialaid.oregonstate.edu/files/ask_finn.png" alt="Questions? Ask Finn!" href = "https://financialaid.oregonstate.edu/verification-faqs"/>
+        </mj-column>
+      </mj-section>
+
+
+
+
+      <mj-section background-color="#d73f09" padding-left="15px" padding-right="15px">
+        <mj-column width="100%">
+          <mj-text color="black" font-size="10px" padding-bottom="0" line-height="16px">
+             <b>Contact Information</b>
+            </br>
+            
+            <br /> 218 Kerr Administration Building
+            <br /> Corvallis, Oregon 97331-2120
+            <br /> Telephone: 541-737-2241
+            <br /> Fax: 541-737-4494
+            <br />Email: financial.aid@oregonstate.edu
+          <br/><a style="color:#ffffff;" href= https://financialaid.oregonstate.edu/financial-aid> Financial Aid Webpage</a>
+            <br />
+            <br /> Oregon State University is committed to affirmative action and equal opportunity and complies with Section 504 of the Rehabilitation Act of 1973. This publication will be made available in accessible format upon request.
+            <a style="color:#ffffff;" href="https://oregonstate.edu/official-web-disclaimer">Privacy Policy</a>.
+
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+    </mj-wrapper>
+
+  </mj-body>
+</mjml>
