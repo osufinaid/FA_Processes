@@ -1,0 +1,127 @@
+<mjml>
+  <mj-head>
+    <mj-title>Direct Student Loans - Financial Aid</mj-title>
+    <mj-preview><!-- Pre-header Text--></mj-preview>
+    <mj-attributes>
+      <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text font-weight="400" font-size="14px" color="#000000" line-height="24px" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-text>
+    </mj-attributes>
+
+    <mj-style inline="inline">
+      .text-link { color: #5e6ebf }
+    </mj-style>
+    <mj-style inline="inline">
+      .footer-link { color: #888888 }
+    </mj-style>
+
+  </mj-head>
+  <mj-body background-color="#e3ded9" width="600px">
+      <mj-section background-color="#e3ded9" padding-bottom="0" full-width="full-width" background-color="#e3ded9" padding-bottom="0">
+        <mj-column width="100%" background-color="#d73f09">
+          <mj-image src="https://financialaid.oregonstate.edu/sites/financialaid.oregonstate.edu/files/osu_fa_horizontal_2c_w_over_b.png" alt="Financial Aid - Degree Partnership Home School" align="left" width="225px" />
+        </mj-column>
+        
+      </mj-section>
+ 
+    
+    
+    <mj-wrapper padding-top="0" padding-bottom="40px">
+      <mj-section background-color="#ffffff" padding-left="15px" padding-right="15px">
+        <mj-column width="100%">
+          <mj-text color="#d73f09" font-weight="bold" font-size="20px">
+            *Notification of Federal Loan Disbursement* 
+          </mj-text>
+
+        
+
+          <mj-text color="#637381">
+            Dear :spriden_first_name (:OSU_ID),
+          </mj-text>
+          <mj-text color="#637381">
+The below Federal Direct Student Loan(s) :LOAN_STATUS disbursed to your student account for the :TERM term.<br></br>
+
+Loans Disbursed: (Please note this ONLY includes Federal Direct Student Loan funds. You may review all other aid disbursements at <a href = https://xe.ucsadm.oregonstate.edu:8890/StudentSelfService/ssb/financialAid>Financial Aid Self Service</a>
+            
+<style type="text/css">
+.tg  {border-collapse:collapse;border-spacing:0;}
+.tg td{font-family:Arial, sans-serif;font-size:14px;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:black;}
+.tg th{font-family:Arial, sans-serif;font-size:14px;font-weight:normal;padding:10px 5px;border-style:solid;border-width:1px;overflow:hidden;word-break:normal;border-color:black;}
+.tg .tg-c3ow{border-color:inherit;text-align:center;vertical-align:top}
+.tg .tg-7btt{font-weight:bold;border-color:inherit;text-align:center;vertical-align:top}
+.tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
+</style>
+<table class="tg">
+  <tr>
+    <th class="tg-7btt"><span style="text-decoration:underline">Loan Type</span></th>
+    <th class="tg-c3ow"><span style="font-weight:bold;text-decoration:underline">Disbursed Amount</span></th>
+    <th class="tg-c3ow"><span style="font-weight:bold;text-decoration:underline">Date</span></th>
+    <th class="tg-c3ow"><span style="font-weight:bold;text-decoration:underline">Academic Year Disbursed Amount</span></th>
+  </tr>
+  <tr>
+    <td class="tg-0pky">:FORD_FUND_DESC</td>
+    <td class="tg-c3ow">:FORD_PAID_AMT</td>
+    <td class="tg-0pky">:FORD_PAID_DATE</td>
+    <td class="tg-c3ow">:FORD_PAID_AMT_AY</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">:UNFD_FUND_DESC</td>
+    <td class="tg-c3ow">:UNFD_PAID_AMT</td>
+    <td class="tg-0pky">:UNFD_PAID_DATE</td>
+    <td class="tg-c3ow">:UNFD_PAID_AMT_AY</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">:PLFD_FUND_DESC</td>
+    <td class="tg-c3ow">:PLFD_PAID_AMT</td>
+    <td class="tg-0pky">:PLFD_PAID_DATE</td>
+    <td class="tg-c3ow">:PLFD_PAID_AMT_AY</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">:GPLD_FUND_DESC</td>
+    <td class="tg-c3ow">:GPLD_PAID_AMT</td>
+    <td class="tg-0pky">:GPLD_PAID_DATE</td>
+    <td class="tg-c3ow">:GPLD_PAID_AMT_AY</td>
+  </tr>
+</table>
+</mj-text>
+<mj-text color="#637381">
+A Borrower (student or parent) has the right to cancel their loan disbursement up to 14 days from the date of disbursement. You can reduce or cancel your loan by filling out a loan revision request. The request forms can be found on our website at https://financialaid.oregonstate.edu/forms.          
+ 
+
+For questions, please call our office at the number below, or reply to this email.
+          </mj-text>
+     
+          <mj-text color="#637381">
+	  Office of Financial Aid
+   <br /> Oregon State University
+           </mj-text>
+<mj-image align="left" width = "200%" src="https://financialaid.oregonstate.edu/sites/financialaid.oregonstate.edu/files/ask_finn.png" alt="Questions? Ask Finn!" href = "https://financialaid.oregonstate.edu/feature-story/degree-partnership-program"/>
+        </mj-column>
+      </mj-section>
+
+
+
+
+      <mj-section background-color="#d73f09" padding-left="15px" padding-right="15px">
+        <mj-column width="100%">
+          <mj-text color="black" font-size="10px" padding-bottom="0" line-height="16px">
+             <b>Contact Information</b>
+           
+            
+            <br /> 218 Kerr Administration Building
+            <br /> Corvallis, Oregon 97331-2120
+            <br /> Telephone: 541-737-2241
+            <br /> Fax: 541-737-4494
+            <br />Email: financial.aid@oregonstate.edu
+          <br/><a style="color:#ffffff;" href= https://financialaid.oregonstate.edu/financial-aid> Financial Aid Webpage</a>
+            <br />
+            <br /> Oregon State University is committed to affirmative action and equal opportunity and complies with Section 504 of the Rehabilitation Act of 1973. This publication will be made available in accessible format upon request.
+            <a style="color:#ffffff;" href="https://oregonstate.edu/official-web-disclaimer">Privacy Policy</a>.
+
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+    </mj-wrapper>
+
+  </mj-body>
+</mjml>

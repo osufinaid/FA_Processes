@@ -1,0 +1,86 @@
+<mjml>
+  <mj-head>
+    <mj-title>Degree Partnership Home School - Financial Aid</mj-title>
+    <mj-preview><!-- Pre-header Text--></mj-preview>
+    <mj-attributes>
+      <mj-all font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-all>
+      <mj-text font-weight="400" font-size="14px" color="#000000" line-height="24px" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"></mj-text>
+    </mj-attributes>
+
+    <mj-style inline="inline">
+      .text-link { color: #5e6ebf }
+    </mj-style>
+    <mj-style inline="inline">
+      .footer-link { color: #888888 }
+    </mj-style>
+
+  </mj-head>
+  <mj-body background-color="#e3ded9" width="600px">
+      <mj-section background-color="#e3ded9" padding-bottom="0" full-width="full-width" background-color="#e3ded9" padding-bottom="0">
+        <mj-column width="100%" background-color="#d73f09">
+          <mj-image src="https://financialaid.oregonstate.edu/sites/financialaid.oregonstate.edu/files/osu_fa_horizontal_2c_w_over_b.png" alt="Financial Aid - Degree Partnership Home School" align="left" width="225px" />
+        </mj-column>
+        
+      </mj-section>
+ 
+    
+    
+    <mj-wrapper padding-top="0" padding-bottom="40px">
+      <mj-section background-color="#ffffff" padding-left="15px" padding-right="15px">
+        <mj-column width="100%">
+          <mj-text color="#d73f09" font-weight="bold" font-size="20px">
+            Financial Aid - DPP Home School 
+          </mj-text>
+
+        
+
+          <mj-text color="#637381">
+            Dear :student_fname,
+          </mj-text>
+          <mj-text color="#637381">
+   Degree Partnership Program (DPP) students must select a "home school". Your "home school" is where you want to receive your financial aid from. We need you to declare your home school, your partner school, and the term you want those selections to start through a MyOSU survey using the button below.
+          </mj-text>
+  <mj-button align = "center" width = "45%" background-color = "#000000" href="https://xe.ucsadm.oregonstate.edu:9990/ssomanager/c/SSB?pkg=twbkwbis.P_GenMenu&name=bwgksrvy.P_ShowSurveys">
+    Declare Home School - MyOSU
+</mj-button>
+   <mj-text color="#637381">
+To learn more about DPP financial aid requirements before making your decision, visit the DPP main page here: <a href= https://partnerships.oregonstate.edu> partnerships.oregonstate.edu</a> <br></br>
+DPP students with OSU scholarships must select OSU as your "home school" and be enrolled full-time each term, taking a minimum of 6 OSU credits each term.<br></br>
+For questions, please call our office at the number below, or reply to this email.
+          </mj-text>
+     
+          <mj-text color="#637381">
+	  Office of Financial Aid
+   <br /> Oregon State University
+           </mj-text>
+<mj-image align="left" width = "200%" src="https://financialaid.oregonstate.edu/sites/financialaid.oregonstate.edu/files/ask_finn.png" alt="Questions? Ask Finn!" href = "https://financialaid.oregonstate.edu/feature-story/degree-partnership-program"/>
+        </mj-column>
+      </mj-section>
+
+
+
+
+      <mj-section background-color="#d73f09" padding-left="15px" padding-right="15px">
+        <mj-column width="100%">
+          <mj-text color="black" font-size="10px" padding-bottom="0" line-height="16px">
+             <b>Contact Information</b>
+           
+            
+            <br /> 218 Kerr Administration Building
+            <br /> Corvallis, Oregon 97331-2120
+            <br /> Telephone: 541-737-2241
+            <br /> Fax: 541-737-4494
+            <br />Email: financial.aid@oregonstate.edu
+          <br/><a style="color:#ffffff;" href= https://financialaid.oregonstate.edu/financial-aid> Financial Aid Webpage</a>
+            <br />
+            <br /> Oregon State University is committed to affirmative action and equal opportunity and complies with Section 504 of the Rehabilitation Act of 1973. This publication will be made available in accessible format upon request.
+            <a style="color:#ffffff;" href="https://oregonstate.edu/official-web-disclaimer">Privacy Policy</a>.
+
+          </mj-text>
+        </mj-column>
+      </mj-section>
+
+    </mj-wrapper>
+
+  </mj-body>
+</mjml>
