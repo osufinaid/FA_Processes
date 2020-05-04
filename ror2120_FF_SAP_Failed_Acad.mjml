@@ -29,7 +29,7 @@
       <mj-section background-color="#ffffff" padding-left="15px" padding-right="15px">
         <mj-column width="100%">
           <mj-text color="#d73f09" font-weight="bold" font-size="20px">
-            Satisfactory Academic Progress - Financial Aid TERMINATED  
+            Satisfactory Academic Progress - Financial Aid INELIGIBLE  
           </mj-text>
 
         
@@ -38,8 +38,9 @@
             Dear :FNAME  :LNAME,                                                                                                                :OSU_ID
           </mj-text>
           <mj-text color="#637381">
-          <p>You are currently ineligible for financial aid due to not making Satisfactory Academic Progress.</p>
-  				<p>The Office of Financial Aid and Scholarships reviews the Satisfactory Academic Progress (SAP) of all financial aid recipients at the end of each term. After review of your Summer 2020 transcript, you have not met one or more of the requirements to maintain SAP. Your financial aid cannot be disbursed unless a SAP appeal is submitted and approved by the Office of Financial Aid.
+
+  				<p>The Office of Financial Aid and Scholarships reviews the Satisfactory Academic Progress (SAP) of all financial aid recipients at the end of each term and you are currently inelibible for financial aid due to not making Satisfactory Academic Progress. Students must maintain a minimum OSU GPA - 2.0 undergrad/post bacc, 2.25 DVM, 2.5 PharmD, and 3.0 for all other Grad Programs. They also must maintain a minimum pace of completion - students need to complete at least 67% of their courses. After a review of your :TERM_DESC transcript, you have not met one or more of the requirements to maintain SAP
+
 </p>
 
 <p>Below is your current SAP standing as of the end of :TERM_DESC:</p>
@@ -48,8 +49,8 @@
   <li>OSU GPA: -- :GPA</li>
   <li>MAXIMUM TIMEFRAME (Eligibility remaining): -- :REMAIN_HRS       credits</li>
 </ul>
-<p>You may submit a SAP <a href= https://financialaid.oregonstate.edu/forms> Appeal<a/> requesting to have your aid reinstated.</p>
-<p>Please contact our office if you believe there may be an error in your OSU records.</p>  
+<p>You may submit a SAP <a href= https://financialaid.oregonstate.edu/forms> Appeal<a/> requesting to have your aid reinstated.  Your financial aid cannot be paid unless a SAP appeal is submitted and approved by the Office of Financial Aid. <u><b>Your complete appeal must be received no later than the end of week 7 in order to be considered for the current term.</b></u> Multi- term appeals require both a student statement letter and a SAP My Degrees plan that has been approved and <b>locked by an academic advisor.</b></p>
+<p>Students who fail to meet SAP policy and who choose to enroll without the benefit of student financial aid may request a review of their academic records after any term in order to determine whether they have met standards.  If the standards are met, eligibility is regained for subsequent terms of enrollment. </p>  
           </mj-text>
   <mj-button align = "center" width = "45%" background-color = "#000000" href="http://xe.ucsadm.oregonstate.edu:8893/StudentSelfService/ssb/financialAid">
     Access MyOSU

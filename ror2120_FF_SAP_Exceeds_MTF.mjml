@@ -39,17 +39,19 @@
           </mj-text>
           <mj-text color="#637381">
           <p>You are currently ineligible for financial aid due to not making Satisfactory Academic Progress.</p>
-  				<p>The Office of Financial Aid and Scholarships reviews the Satisfactory Academic Progress (SAP) of all financial aid recipients at the end of each term. After review of your :TERM_DESC transcript, your SAP standing for Financial Aid purposes is: MAXIMUM TIMEFRAME EXCEEDED. Your future term(s) of financial aid will not be disbursed to you.
+  				<p>The Office of Financial Aid and Scholarships reviews the Satisfactory Academic Progress (SAP) of all financial aid recipients at the end of each term. After review of your  :TERM_DESC transcript, your SAP standing for Financial Aid purposes is: MAXIMUM TIMEFRAME EXCEEDED.  The Maximum Timeframe is 150% of the published credit requirement to complete a degree (e.g. for a degree requiring 180 credit hours, the Maximum Timeframe is 270 credit hours).Your future term(s) of financial aid will not be disbursed to you.
 </p>
 
 <p>Below is your current SAP standing as of the end of :TERM_DESC:</p>
  <ul style="list-style-type:disc;">
   <li>COMPLETION RATE (PACE): -- :PACE%	</li>
   <li>OSU GPA: -- :GPA</li>
-  <li>MAXIMUM TIMEFRAME (Eligibility remaining): -- :REMAIN_HRS       credits</li>
+  <li>MAXIMUM TIMEFRAME: -- :ALLOWED_HRS</li>
+  <li>ATTEMPTED CREDIT HOURS: -- :ATTEMPT_HRS</li>
+  <li>ELIGIBILITY REMAINING: -- :REMAIN_HRS</li>
 </ul>
 <p>The policy for Satisfactory Academic Progress is here <a href= https://financialaid.oregonstate.edu/satisfactory-academic-progress> SAP Policy<a/>.</p>
-<p>We recommend that you work with your academic advisor to create a degree completion plan. If you cannot complete your degree within your current maximum timeframe, you may appeal to extend the credit hours allowed. Please see our <a href= https://financialaid.oregonstate.edu/forms> Maximum Timeframe Appeal<a/> form for more details.</p>  
+<p>We recommend that you work with your academic advisor to create a degree completion plan. If you cannot complete your degree within your current maximum timeframe, you may appeal (<a href= https://financialaid.oregonstate.edu/forms> Maximum Timeframe Appeal<a/>) to extend the credit hours allowed. Your financial aid cannot be paid unless an appeal is approved by the Office of Financial Aid.  <u><b>Your complete appeal must be received no later than the end of week 7 in order to be considered for the current term.</b></u>  Multi-term appeals require both a student statement letter and a SAP My Degrees plan that has been approved by an academic advisor.</p>  
           </mj-text>
   <mj-button align = "center" width = "45%" background-color = "#000000" href="http://xe.ucsadm.oregonstate.edu:8893/StudentSelfService/ssb/financialAid">
     Access MyOSU
